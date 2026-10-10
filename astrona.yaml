@@ -1,0 +1,106 @@
+# Preparation scaffold. Technical pages stay draft until authoring and review.
+training:
+  id: ATS074
+  title: 'OTCA: The OpenTelemetry API and SDK'
+  description: Preparation scaffold for The OpenTelemetry API and SDK. Lessons and environments are planned.
+  certification:
+    name: OpenTelemetry Certified Associate
+    code: OTCA
+    provider: CNCF / Linux Foundation
+    domain: The OpenTelemetry API and SDK
+    weight: 46
+    competencies:
+    - Data Model
+    - Composability and Extension
+    - Configuration
+    - Signals (Tracing, Metric, Log)
+    - SDK Pipelines
+    - Context Propagation
+    - Agents
+modules:
+- id: module-intro
+  title: Introduction
+  description: Planned introduction and authoring status.
+  content:
+  - type: reading
+    title: Introduction
+    path: sections/intro/README.md
+  - type: reading
+    title: Welcome To The Course
+    path: sections/intro/course-01-welcome.md
+  - type: reading
+    title: Get Your Machine Ready
+    path: sections/intro/course-02-get-your-machine-ready.md
+  - type: reading
+    title: How This Course Is Made
+    path: sections/intro/course-03-how-this-course-is-made.md
+- id: module-010
+  title: Data Model
+  description: Planned coverage of this curriculum objective.
+  content:
+  - type: reading
+    title: Section Overview
+    path: sections/section-010/README.md
+  - type: reading
+    title: Data Model
+    path: sections/section-010/module-01/course.md
+- id: module-020
+  title: Composability and Extension
+  description: Planned coverage of this curriculum objective.
+  content:
+  - type: reading
+    title: Section Overview
+    path: sections/section-020/README.md
+  - type: reading
+    title: Composability and Extension
+    path: sections/section-020/module-01/course.md
+- id: module-030
+  title: Configuration
+  description: Planned coverage of this curriculum objective.
+  content:
+  - type: reading
+    title: Section Overview
+    path: sections/section-030/README.md
+  - type: reading
+    title: Configuration
+    path: sections/section-030/module-01/course.md
+- id: module-040
+  title: Signals (Tracing, Metric, Log)
+  description: Planned coverage of this curriculum objective.
+  content:
+  - type: reading
+    title: Section Overview
+    path: sections/section-040/README.md
+  - type: reading
+    title: Signals (Tracing, Metric, Log)
+    path: sections/section-040/module-01/course.md
+- id: module-050
+  title: SDK Pipelines
+  description: Planned coverage of this curriculum objective.
+  content:
+  - type: reading
+    title: Section Overview
+    path: sections/section-050/README.md
+  - type: reading
+    title: SDK Pipelines
+    path: sections/section-050/module-01/course.md
+- id: module-060
+  title: Context Propagation
+  description: Planned coverage of this curriculum objective.
+  content:
+  - type: reading
+    title: Section Overview
+    path: sections/section-060/README.md
+  - type: reading
+    title: Context Propagation
+    path: sections/section-060/module-01/course.md
+- id: module-070
+  title: Agents
+  description: Planned coverage of this curriculum objective.
+  content:
+  - type: reading
+    title: Section Overview
+    path: sections/section-070/README.md
+  - type: reading
+    title: Agents
+    path: sections/section-070/module-01/course.md
