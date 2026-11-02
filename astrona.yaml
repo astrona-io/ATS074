@@ -38,7 +38,7 @@ modules:
 - id: module-010
   title: Data Model
   description: Developed reading and reasoning for Data Model.
-  status: alpha
+  maturity: alpha
   content:
   - type: reading
     title: Data Model
@@ -55,7 +55,7 @@ modules:
 - id: module-020
   title: Composability and Extension
   description: Developed reading and reasoning for Composability and Extension.
-  status: alpha
+  maturity: alpha
   content:
   - type: reading
     title: Composability and Extension
@@ -72,7 +72,7 @@ modules:
 - id: module-030
   title: Configuration
   description: Developed reading and reasoning for Configuration.
-  status: alpha
+  maturity: alpha
   content:
   - type: reading
     title: Configuration
@@ -89,7 +89,7 @@ modules:
 - id: module-040
   title: Signals (Tracing, Metric, Log)
   description: Developed reading and reasoning for Signals (Tracing, Metric, Log).
-  status: alpha
+  maturity: alpha
   content:
   - type: reading
     title: Signals (Tracing, Metric, Log)
@@ -112,7 +112,7 @@ modules:
 - id: module-050
   title: SDK Pipelines
   description: Developed reading and reasoning for SDK Pipelines.
-  status: alpha
+  maturity: alpha
   content:
   - type: reading
     title: SDK Pipelines
@@ -129,7 +129,7 @@ modules:
 - id: module-060
   title: Context Propagation
   description: Developed reading and reasoning for Context Propagation.
-  status: alpha
+  maturity: alpha
   content:
   - type: reading
     title: Context Propagation
@@ -146,7 +146,7 @@ modules:
 - id: module-070
   title: Agents
   description: Developed reading and reasoning for Agents.
-  status: alpha
+  maturity: alpha
   content:
   - type: reading
     title: Agents
