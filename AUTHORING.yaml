@@ -1,0 +1,174 @@
+version: 1
+approval: OTCA requested 2026-10-11; established reading-only scope
+course:
+  id: ATS074
+  certification:
+    name: OpenTelemetry Certified Associate
+    code: OTCA
+    provider: CNCF / Linux Foundation
+    domain: The OpenTelemetry API and SDK
+    weight: 46
+    competencies:
+    - Data Model
+    - Composability and Extension
+    - Configuration
+    - Signals (Tracing, Metric, Log)
+    - SDK Pipelines
+    - Context Propagation
+    - Agents
+defaults:
+  playground: false
+  module_lab: false
+  capstone: false
+  section_quiz: false
+  final_quiz: true
+assessment_format: YAML question banks v1, registered in assessments/index.yaml
+sections:
+- id: section-010
+  title: Data Model
+  curriculum_item: Data Model
+  capstone: false
+  section_quiz: false
+  modules:
+  - id: module-01
+    title: Resources, Instrumentation Scope And Signal Envelopes
+    objectives:
+    - Distinguish resource, instrumentation scope and observation attributes.
+    - Explain span, metric point and log record identity.
+    - Reason about units, timestamps and aggregation metadata.
+    outline:
+    - Resources, Instrumentation Scope And Signal Envelopes
+    playground: false
+    module_lab: false
+    sources:
+    - reading: sections/section-010/module-01/course-01-resources-instrumentation-scope-and-signal-envelopes.md
+      adapted_from: null
+- id: section-020
+  title: Composability and Extension
+  curriculum_item: Composability and Extension
+  capstone: false
+  section_quiz: false
+  modules:
+  - id: module-01
+    title: API Independence, SDK Components And Extension Contracts
+    objectives:
+    - Explain why reusable instrumentation depends on APIs rather than exporters.
+    - Distinguish SDK providers, processors and exporters.
+    - Reason about component compatibility and custom extension responsibility.
+    outline:
+    - API Independence, SDK Components And Extension Contracts
+    playground: false
+    module_lab: false
+    sources:
+    - reading: sections/section-020/module-01/course-01-api-independence-sdk-components-and-extension-contracts.md
+      adapted_from: null
+- id: section-030
+  title: Configuration
+  curriculum_item: Configuration
+  capstone: false
+  section_quiz: true
+  modules:
+  - id: module-01
+    title: SDK Initialization, Resource Settings And Export Configuration
+    objectives:
+    - Identify configuration owned by the application SDK.
+    - Explain initialization timing and language-specific environment support.
+    - Distinguish endpoint, protocol and sampling configuration failures.
+    outline:
+    - SDK Initialization, Resource Settings And Export Configuration
+    playground: false
+    module_lab: false
+    sources:
+    - reading: sections/section-030/module-01/course-01-sdk-initialization-resource-settings-and-export-configuration.md
+      adapted_from: null
+- id: section-040
+  title: Signals (Tracing, Metric, Log)
+  curriculum_item: Signals (Tracing, Metric, Log)
+  capstone: false
+  section_quiz: false
+  modules:
+  - id: module-01
+    title: Tracing Requests Through Spans And Context
+    objectives:
+    - Explain trace and span identity and timing.
+    - Distinguish parent-child structure from a complete causal explanation.
+    - Describe context propagation across service boundaries.
+    - Account for sampling, missing spans and sensitive attributes.
+    - Choose metric types according to the measured quantity.
+    - Distinguish cumulative counters from current-state gauges.
+    - Explain histograms and summaries as distribution evidence.
+    - Relate aggregation, collection and cardinality to interpretation.
+    - Distinguish numerical series from individual event records.
+    - Design structured records with useful identity and timing.
+    - Correlate logs with metrics without confusing correlation with cause.
+    - Account for retention, sampling and sensitive data.
+    outline:
+    - Tracing Requests Through Spans And Context
+    - Counters, Gauges And Distribution Measurements
+    - Logs And Events As Evidence Beside Metrics
+    playground: false
+    module_lab: false
+    sources:
+    - reading: sections/section-040/module-01/course-01-tracing-requests-through-spans-and-context.md
+      adapted_from: ATS047/sections/section-030/module-01/course-01-tracing-requests-through-spans-and-context.md
+    - reading: sections/section-040/module-01/course-02-counters-gauges-and-distribution-measurements.md
+      adapted_from: ATS047/sections/section-010/module-01/course-01-counters-gauges-and-distribution-measurements.md
+    - reading: sections/section-040/module-01/course-03-logs-and-events-as-evidence-beside-metrics.md
+      adapted_from: ATS047/sections/section-020/module-01/course-01-logs-and-events-as-evidence-beside-metrics.md
+- id: section-050
+  title: SDK Pipelines
+  curriculum_item: SDK Pipelines
+  capstone: false
+  section_quiz: false
+  modules:
+  - id: module-01
+    title: Signal Providers, Processing, Readers And Shutdown
+    objectives:
+    - Trace an observation through the appropriate SDK pipeline.
+    - Distinguish trace sampling from metric aggregation.
+    - Explain buffering and lifecycle limits without claiming guaranteed delivery.
+    outline:
+    - Signal Providers, Processing, Readers And Shutdown
+    playground: false
+    module_lab: false
+    sources:
+    - reading: sections/section-050/module-01/course-01-signal-providers-processing-readers-and-shutdown.md
+      adapted_from: null
+- id: section-060
+  title: Context Propagation
+  curriculum_item: Context Propagation
+  capstone: false
+  section_quiz: false
+  modules:
+  - id: module-01
+    title: Active Context, Injection, Extraction And Baggage
+    objectives:
+    - Explain context propagation across process and asynchronous boundaries.
+    - Distinguish trace context from baggage and authorization.
+    - Identify where missing propagation breaks causal relationships.
+    outline:
+    - Active Context, Injection, Extraction And Baggage
+    playground: false
+    module_lab: false
+    sources:
+    - reading: sections/section-060/module-01/course-01-active-context-injection-extraction-and-baggage.md
+      adapted_from: null
+- id: section-070
+  title: Agents
+  curriculum_item: Agents
+  capstone: false
+  section_quiz: false
+  modules:
+  - id: module-01
+    title: Instrumentation Agents And Local Collection Roles
+    objectives:
+    - Distinguish language instrumentation agents from Collector agents.
+    - Explain local collection benefits and authority requirements.
+    - Identify unsupported coverage and shared-host data risks.
+    outline:
+    - Instrumentation Agents And Local Collection Roles
+    playground: false
+    module_lab: false
+    sources:
+    - reading: sections/section-070/module-01/course-01-instrumentation-agents-and-local-collection-roles.md
+      adapted_from: null
