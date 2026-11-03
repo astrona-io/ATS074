@@ -1,5 +1,5 @@
 version: 1
-approval: OTCA requested 2026-10-11; established reading-only scope
+approval: OTCA requested 2026-10-11; hands-on scope approved by the maintainer
 course:
   id: ATS074
   certification:
@@ -17,18 +17,18 @@ course:
     - Context Propagation
     - Agents
 defaults:
-  playground: false
-  module_lab: false
-  capstone: false
-  section_quiz: false
+  playground: true
+  module_lab: true
+  capstone: true
+  section_quiz: true
   final_quiz: true
-assessment_format: YAML question banks v1, registered in assessments/index.yaml
+assessment_format: section quiz.yaml question banks plus sections/final-domain-quiz.yaml
 sections:
 - id: section-010
   title: Data Model
   curriculum_item: Data Model
-  capstone: false
-  section_quiz: false
+  capstone: true
+  section_quiz: true
   modules:
   - id: module-01
     title: Resources, Instrumentation Scope And Signal Envelopes
@@ -38,16 +38,16 @@ sections:
     - Reason about units, timestamps and aggregation metadata.
     outline:
     - Resources, Instrumentation Scope And Signal Envelopes
-    playground: false
-    module_lab: false
+    playground: true
+    module_lab: true
     sources:
     - reading: sections/section-010/module-01/course-01-resources-instrumentation-scope-and-signal-envelopes.md
       adapted_from: null
 - id: section-020
   title: Composability and Extension
   curriculum_item: Composability and Extension
-  capstone: false
-  section_quiz: false
+  capstone: true
+  section_quiz: true
   modules:
   - id: module-01
     title: API Independence, SDK Components And Extension Contracts
@@ -57,15 +57,15 @@ sections:
     - Reason about component compatibility and custom extension responsibility.
     outline:
     - API Independence, SDK Components And Extension Contracts
-    playground: false
-    module_lab: false
+    playground: true
+    module_lab: true
     sources:
     - reading: sections/section-020/module-01/course-01-api-independence-sdk-components-and-extension-contracts.md
       adapted_from: null
 - id: section-030
   title: Configuration
   curriculum_item: Configuration
-  capstone: false
+  capstone: true
   section_quiz: true
   modules:
   - id: module-01
@@ -76,16 +76,16 @@ sections:
     - Distinguish endpoint, protocol and sampling configuration failures.
     outline:
     - SDK Initialization, Resource Settings And Export Configuration
-    playground: false
-    module_lab: false
+    playground: true
+    module_lab: true
     sources:
     - reading: sections/section-030/module-01/course-01-sdk-initialization-resource-settings-and-export-configuration.md
       adapted_from: null
 - id: section-040
   title: Signals (Tracing, Metric, Log)
   curriculum_item: Signals (Tracing, Metric, Log)
-  capstone: false
-  section_quiz: false
+  capstone: true
+  section_quiz: true
   modules:
   - id: module-01
     title: Tracing Requests Through Spans And Context
@@ -106,8 +106,8 @@ sections:
     - Tracing Requests Through Spans And Context
     - Counters, Gauges And Distribution Measurements
     - Logs And Events As Evidence Beside Metrics
-    playground: false
-    module_lab: false
+    playground: true
+    module_lab: true
     sources:
     - reading: sections/section-040/module-01/course-01-tracing-requests-through-spans-and-context.md
       adapted_from: ATS047/sections/section-030/module-01/course-01-tracing-requests-through-spans-and-context.md
@@ -118,8 +118,8 @@ sections:
 - id: section-050
   title: SDK Pipelines
   curriculum_item: SDK Pipelines
-  capstone: false
-  section_quiz: false
+  capstone: true
+  section_quiz: true
   modules:
   - id: module-01
     title: Signal Providers, Processing, Readers And Shutdown
@@ -129,16 +129,16 @@ sections:
     - Explain buffering and lifecycle limits without claiming guaranteed delivery.
     outline:
     - Signal Providers, Processing, Readers And Shutdown
-    playground: false
-    module_lab: false
+    playground: true
+    module_lab: true
     sources:
     - reading: sections/section-050/module-01/course-01-signal-providers-processing-readers-and-shutdown.md
       adapted_from: null
 - id: section-060
   title: Context Propagation
   curriculum_item: Context Propagation
-  capstone: false
-  section_quiz: false
+  capstone: true
+  section_quiz: true
   modules:
   - id: module-01
     title: Active Context, Injection, Extraction And Baggage
@@ -148,16 +148,16 @@ sections:
     - Identify where missing propagation breaks causal relationships.
     outline:
     - Active Context, Injection, Extraction And Baggage
-    playground: false
-    module_lab: false
+    playground: true
+    module_lab: true
     sources:
     - reading: sections/section-060/module-01/course-01-active-context-injection-extraction-and-baggage.md
       adapted_from: null
 - id: section-070
   title: Agents
   curriculum_item: Agents
-  capstone: false
-  section_quiz: false
+  capstone: true
+  section_quiz: true
   modules:
   - id: module-01
     title: Instrumentation Agents And Local Collection Roles
@@ -167,8 +167,8 @@ sections:
     - Identify unsupported coverage and shared-host data risks.
     outline:
     - Instrumentation Agents And Local Collection Roles
-    playground: false
-    module_lab: false
+    playground: true
+    module_lab: true
     sources:
     - reading: sections/section-070/module-01/course-01-instrumentation-agents-and-local-collection-roles.md
       adapted_from: null

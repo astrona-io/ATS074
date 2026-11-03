@@ -1,0 +1,7 @@
+# Reference solution for the resource lab, as the environment of the shuttle container.
+# apply.sh sets the same values with `kubectl set env`.
+env:
+  - name: OTEL_SERVICE_NAME
+    value: "shuttle"
+  - name: OTEL_RESOURCE_ATTRIBUTES
+    value: "service.namespace=starfleet,service.version=1.0.0,deployment.environment.name=training"

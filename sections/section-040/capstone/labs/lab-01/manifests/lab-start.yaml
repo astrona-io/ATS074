@@ -1,0 +1,239 @@
+# Example application for the logs module: `shuttle` (Python, OpenTelemetry SDK)
+# exports traces, metrics and logs over OTLP/HTTP to the `collector`, which prints
+# everything with the debug exporter. Read the output with:
+#   kubectl -n starfleet logs deploy/collector
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: starfleet
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shuttle-app
+  namespace: starfleet
+data:
+  app.py: |
+    """shuttle: a small service that uses the OpenTelemetry Python SDK for traces, metrics and logs."""
+    import logging
+    import os
+    import random
+    import time
+
+    from opentelemetry import metrics, trace
+    from opentelemetry._logs import SeverityNumber, set_logger_provider
+    from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
+    from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+    from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+    from opentelemetry.sdk.metrics import MeterProvider
+    from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    from opentelemetry.trace import Status, StatusCode
+
+    LOG_LEVEL = os.environ.get("SHUTTLE_LOG_LEVEL", "INFO").upper()
+    LOG_PAYLOAD = os.environ.get("SHUTTLE_LOG_PAYLOAD", "false").lower() == "true"
+    LOG_INSIDE_SPAN = os.environ.get("SHUTTLE_LOG_INSIDE_SPAN", "true").lower() == "true"
+
+    # One Resource is built from OTEL_SERVICE_NAME and OTEL_RESOURCE_ATTRIBUTES and
+    # shared by all three providers, so every signal carries the same identity.
+    resource = Resource.create({})
+
+    tracer_provider = TracerProvider(resource=resource)
+    tracer_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+    trace.set_tracer_provider(tracer_provider)
+
+    meter_provider = MeterProvider(
+        resource=resource,
+        metric_readers=[PeriodicExportingMetricReader(OTLPMetricExporter())],
+    )
+    metrics.set_meter_provider(meter_provider)
+
+    logger_provider = LoggerProvider(resource=resource)
+    logger_provider.add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter()))
+    set_logger_provider(logger_provider)
+
+    # Bridge: the standard library logging module sends every record to the SDK.
+    log = logging.getLogger("starfleet.shuttle")
+    log.setLevel(LOG_LEVEL)
+    log.addHandler(LoggingHandler(level=logging.NOTSET, logger_provider=logger_provider))
+    console = logging.StreamHandler()
+    console.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    log.addHandler(console)
+
+    tracer = trace.get_tracer("starfleet.shuttle", "1.0.0")
+    meter = metrics.get_meter("starfleet.shuttle", "1.0.0")
+    dispatch_count = meter.create_counter("shuttle.dispatch.count", unit="{dispatch}", description="Dispatch attempts")
+
+    # Direct use of the Logs API: an event is a log record with an event name.
+    event_logger = logger_provider.get_logger("starfleet.shuttle.events", "1.0.0")
+
+    log.info("shuttle started", extra={"log.level.configured": LOG_LEVEL})
+
+    count = 0
+    while True:
+        count += 1
+        failed = count % 3 == 0
+        with tracer.start_as_current_span("dispatch") as span:
+            span.set_attribute("shuttle.dispatch.number", count)
+            log.debug("route computed", extra={"shuttle.route": "alpha-7", "shuttle.dispatch.number": count})
+            if LOG_PAYLOAD:
+                log.info(
+                    "request received",
+                    extra={
+                        "request.authorization": "Bearer starfleet-demo-token-1234",
+                        "customer.email": "ensign@example.test",
+                    },
+                )
+            time.sleep(random.uniform(0.05, 0.2))
+            if failed:
+                span.set_status(Status(StatusCode.ERROR, "dispatch failed"))
+                if LOG_INSIDE_SPAN:
+                    log.error("dispatch failed", extra={"shuttle.dispatch.number": count, "error.type": "RouteBlocked"})
+            else:
+                log.info("dispatch completed", extra={"shuttle.dispatch.number": count})
+                event_logger.emit(
+                    event_name="shuttle.docked",
+                    severity_number=SeverityNumber.INFO,
+                    attributes={"shuttle.dispatch.number": count},
+                )
+        if failed and not LOG_INSIDE_SPAN:
+            # The span has ended: this record carries no trace context.
+            log.error("dispatch failed", extra={"shuttle.dispatch.number": count, "error.type": "RouteBlocked"})
+        dispatch_count.add(1, {"shuttle.outcome": "failed" if failed else "ok"})
+        time.sleep(3)
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: collector-config
+  namespace: starfleet
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    exporters:
+      debug:
+        verbosity: detailed
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          exporters: [debug]
+        metrics:
+          receivers: [otlp]
+          exporters: [debug]
+        logs:
+          receivers: [otlp]
+          exporters: [debug]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: collector
+  namespace: starfleet
+  labels:
+    app: collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: collector
+  template:
+    metadata:
+      labels:
+        app: collector
+    spec:
+      containers:
+        - name: collector
+          image: otel/opentelemetry-collector-contrib:0.164.0
+          args: ["--config=/etc/otelcol/config.yaml"]
+          ports:
+            - name: otlp-grpc
+              containerPort: 4317
+            - name: otlp-http
+              containerPort: 4318
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otelcol
+      volumes:
+        - name: config
+          configMap:
+            name: collector-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: collector
+  namespace: starfleet
+spec:
+  selector:
+    app: collector
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: otlp-grpc
+    - name: otlp-http
+      port: 4318
+      targetPort: otlp-http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shuttle
+  namespace: starfleet
+  labels:
+    app: shuttle
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shuttle
+  template:
+    metadata:
+      labels:
+        app: shuttle
+    spec:
+      containers:
+        - name: shuttle
+          image: python:3.12-slim
+          command:
+            - sh
+            - -c
+            - "pip install --quiet --no-cache-dir opentelemetry-sdk==1.45.2 opentelemetry-exporter-otlp-proto-http==1.45.2 && python /app/app.py"
+          env:
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://collector.starfleet.svc.cluster.local:4318"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
+            - name: OTEL_BLRP_SCHEDULE_DELAY
+              value: "2000"
+            - name: OTEL_BSP_SCHEDULE_DELAY
+              value: "2000"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: OTEL_TRACES_SAMPLER
+              value: "always_off"
+            - name: OTEL_METRIC_EXPORT_INTERVAL
+              value: "3600000"
+            - name: SHUTTLE_LOG_LEVEL
+              value: "DEBUG"
+            - name: SHUTTLE_LOG_PAYLOAD
+              value: "true"
+            - name: SHUTTLE_LOG_INSIDE_SPAN
+              value: "false"
+          volumeMounts:
+            - name: app
+              mountPath: /app
+      volumes:
+        - name: app
+          configMap:
+            name: shuttle-app

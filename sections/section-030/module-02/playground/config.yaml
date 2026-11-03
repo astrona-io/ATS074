@@ -1,0 +1,33 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Exporter, Sampler And Declarative Configuration (PLAYGROUND) - playground environment. A clean sandbox: it starts the
+# `shuttle` Python service (real OpenTelemetry SDK, configured with OTEL_*
+# environment variables) and the `collector` (debug exporter), then stays
+# running for free exploration. No task, no grading. Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-playground-030-02
+  docs:
+    guide: docs/overview.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+bootstrap:
+  manifests:
+    - name: starfleet
+      type: file
+      source: manifests/starfleet.yaml
+  waitFor:
+    - resource: deploy/collector
+      namespace: starfleet
+    - resource: deploy/shuttle
+      namespace: starfleet
+
+teardown:
+  keepCluster: false

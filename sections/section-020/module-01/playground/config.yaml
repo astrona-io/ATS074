@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# API And SDK Separation (PLAYGROUND): a clean environment. It starts the Starfleet example
+# application (a Python service with the OpenTelemetry SDK) and an
+# OpenTelemetry Collector, then stays running for free exploration. No task, no
+# grading, no `astrona submit`. Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-playground-020-01
+  docs:
+    guide: docs/overview.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+# The shuttle pod installs the SDK packages with pip when it starts, so it
+# needs several minutes before it is ready.
+bootstrap:
+  manifests:
+    - name: starfleet
+      type: file
+      source: manifests/starfleet.yaml
+  waitFor:
+    - resource: deploy/collector
+      namespace: starfleet
+      timeout: 300s
+    - resource: deploy/shuttle
+      namespace: starfleet
+      timeout: 300s
+
+teardown:
+  keepCluster: false

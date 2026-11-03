@@ -1,0 +1,69 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Delta Temporality And Exemplars (LAB). Graded against the live cluster. Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-lab-010-02
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+# Starting state: the Collector and the shuttle service. The shuttle exports cumulative metrics and its exemplar filter is always_off.
+bootstrap:
+  init:
+    - name: seed-cluster
+      description: Create the Collector and the shuttle service
+      type: file
+      source: bootstrap/01-seed-cluster.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
+    - name: wait-for-settled
+      description: Wait until the shuttle rollout is complete
+      type: file
+      source: testing/wait-for-settled.sh
+
+validation:
+  scripts:
+    - name: temporality-configured
+      description: The shuttle asks for delta temporality
+      type: file
+      source: validation/validate-temporality-configured.sh
+      hint: The setting is the environment variable OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE. Its value is delta.
+    - name: exemplar-filter
+      description: The exemplar filter is not always_off
+      type: file
+      source: validation/validate-exemplar-filter.sh
+      hint: Use OTEL_METRICS_EXEMPLAR_FILTER=trace_based so that a measurement made inside a sampled span can become an exemplar.
+    - name: collector-delta
+      description: The Collector receives shuttle.requests as a delta sum
+      type: file
+      source: validation/validate-collector-delta.sh
+      hint: The check reads the Collector log of the last 40 seconds. Wait for the rollout to finish.
+    - name: collector-exemplars
+      description: The Collector receives exemplars on shuttle.request.duration
+      type: file
+      source: validation/validate-collector-exemplars.sh
+      hint: An exemplar needs a recording measurement inside a sampled span. Check the filter value and wait for the rollout.
+    - name: workloads-running
+      description: The Collector and the shuttle are available with their original images
+      type: file
+      source: validation/validate-workloads-running.sh
+      hint: Change environment variables only. Do not delete or replace the Deployments.
+
+teardown:
+  keepCluster: false

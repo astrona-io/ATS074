@@ -1,0 +1,7 @@
+# Reference solution for the metrics lab, as extra environment of the shuttle container.
+# apply.sh sets the same values with `kubectl set env`.
+env:
+  - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+    value: "delta"
+  - name: OTEL_METRICS_EXEMPLAR_FILTER
+    value: "trace_based"

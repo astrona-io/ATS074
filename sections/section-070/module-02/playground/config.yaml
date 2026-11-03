@@ -1,0 +1,35 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Collector Agent And Gateway Roles (PLAYGROUND) — playground environment.
+# A clean sandbox: a gateway Collector, an agent Collector (DaemonSet) with
+# memory_limiter, resourcedetection and batch, and an SDK app that sends to the
+# agent. No task, no grading, no `astrona submit`. Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-playground-070-02
+  docs:
+    guide: docs/overview.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+bootstrap:
+  manifests:
+    - name: starfleet
+      type: file
+      source: manifests/starfleet.yaml
+  waitFor:
+    - resource: deploy/gateway
+      namespace: starfleet
+    - resource: ds/agent
+      namespace: starfleet
+    - resource: deploy/shuttle
+      namespace: starfleet
+
+teardown:
+  keepCluster: false

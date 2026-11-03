@@ -1,0 +1,246 @@
+# Starfleet example for the instrumentation agent module. scout is a Flask app
+# with no OpenTelemetry code: opentelemetry-instrument adds the telemetry.
+# collector receives OTLP and prints everything with the debug exporter.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: starfleet
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: collector-config
+  namespace: starfleet
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    exporters:
+      debug:
+        verbosity: detailed
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          exporters: [debug]
+        metrics:
+          receivers: [otlp]
+          exporters: [debug]
+        logs:
+          receivers: [otlp]
+          exporters: [debug]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: collector
+  namespace: starfleet
+  labels:
+    app: collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: collector
+  template:
+    metadata:
+      labels:
+        app: collector
+    spec:
+      containers:
+        - name: collector
+          image: otel/opentelemetry-collector-contrib:0.164.0
+          args: ["--config=/etc/otelcol/config.yaml"]
+          ports:
+            - name: otlp-grpc
+              containerPort: 4317
+            - name: otlp-http
+              containerPort: 4318
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otelcol
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+      volumes:
+        - name: config
+          configMap:
+            name: collector-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: collector
+  namespace: starfleet
+spec:
+  selector:
+    app: collector
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: otlp-grpc
+    - name: otlp-http
+      port: 4318
+      targetPort: otlp-http
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scout-app
+  namespace: starfleet
+data:
+  start.sh: |
+    set -e
+    pip install --quiet --no-cache-dir flask==3.1.3 requests==2.34.2 "opentelemetry-distro[otlp]==0.66b2"
+    opentelemetry-bootstrap -a install
+    exec opentelemetry-instrument python /app/app.py
+  app.py: |
+    import random
+    import time
+
+    import requests
+    from flask import Flask, jsonify
+
+    app = Flask(__name__)
+    BERTHS = ["alpha", "beta", "gamma"]
+
+
+    @app.route("/healthz")
+    def healthz():
+        return "ok"
+
+
+    @app.route("/status")
+    def status():
+        return jsonify(service="scout", state="ready")
+
+
+    @app.route("/relay")
+    def relay():
+        reply = requests.get("http://127.0.0.1:8080/status", timeout=5)
+        return jsonify(relayed=reply.json())
+
+
+    @app.route("/dock")
+    def dock():
+        berth = random.choice(BERTHS)
+        wait_units = random.randint(1, 5)
+        time.sleep(wait_units / 100)
+        return jsonify(berth=berth, wait_units=wait_units)
+
+
+    if __name__ == "__main__":
+        app.run(host="0.0.0.0", port=8080)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scout
+  namespace: starfleet
+  labels:
+    app: scout
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scout
+  template:
+    metadata:
+      labels:
+        app: scout
+    spec:
+      containers:
+        - name: scout
+          image: python:3.12-slim
+          command: ["sh", "/app/start.sh"]
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: scout
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: service.namespace=starfleet,deployment.environment.name=playground
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://collector:4318
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: http/protobuf
+            - name: OTEL_TRACES_EXPORTER
+              value: otlp
+            - name: OTEL_METRICS_EXPORTER
+              value: otlp
+            - name: OTEL_LOGS_EXPORTER
+              value: otlp
+            - name: OTEL_METRIC_EXPORT_INTERVAL
+              value: "10000"
+          ports:
+            - name: http
+              containerPort: 8080
+          startupProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+            failureThreshold: 80
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+          volumeMounts:
+            - name: app
+              mountPath: /app
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+      volumes:
+        - name: app
+          configMap:
+            name: scout-app
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scout
+  namespace: starfleet
+spec:
+  selector:
+    app: scout
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: drifter
+  namespace: starfleet
+  labels:
+    app: drifter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: drifter
+  template:
+    metadata:
+      labels:
+        app: drifter
+    spec:
+      containers:
+        - name: drifter
+          image: curlimages/curl:8.22.0
+          command: ["sh", "-c", "while true; do curl -s http://scout/relay >/dev/null; curl -s http://scout/dock >/dev/null; sleep 5; done"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              memory: 32Mi

@@ -1,0 +1,13 @@
+# Reference solution for the capstone: the evidence record. The pipeline fixes
+# are environment changes applied by apply.sh.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pipeline-evidence
+  namespace: starfleet
+data:
+  endpoint: "http://collector.starfleet.svc.cluster.local:4318"
+  sampler: "parentbased_traceidratio"
+  sampler-arg: "0.25"
+  metric-export-interval-ms: "5000"
+  observed-at: "OBSERVED_AT"

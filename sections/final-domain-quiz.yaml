@@ -1,0 +1,409 @@
+# Final domain knowledge check across all seven sections.
+---
+schema_version: 1
+kind: question_bank
+id: ats074-final
+course_id: ATS074
+exam_code: OTCA
+status: draft
+provenance: Original practice material written for this course; not official exam
+  questions.
+scope:
+  type: domain
+  id: the-opentelemetry-api-and-sdk
+  title: The OpenTelemetry API and SDK
+questions:
+- id: ats074-final-q01
+  type: single_choice
+  difficulty: beginner
+  learning_objective: Explain how OTEL_SERVICE_NAME and OTEL_RESOURCE_ATTRIBUTES combine
+    into the service name
+  source_readings:
+  - sections/section-010/module-01/course-01-resources-and-service-identity.md
+  prompt: A service sets `OTEL_SERVICE_NAME=shuttle` and `OTEL_RESOURCE_ATTRIBUTES=service.name=other,service.version=1.0.0`.
+    What `service.name` does the SDK put in the resource?
+  options:
+  - id: a
+    text: "`other`, because the attribute list is read last."
+    explanation: The attribute list does not win over the dedicated service name variable.
+  - id: b
+    text: "`shuttle`, because `OTEL_SERVICE_NAME` takes priority over `service.name`
+      in `OTEL_RESOURCE_ATTRIBUTES`."
+    explanation: Correct. `OTEL_SERVICE_NAME` replaces any `service.name` from the
+      attribute list, without an error.
+  - id: c
+    text: "`unknown_service`, because two settings conflict."
+    explanation: A conflict is resolved by priority and does not cause the fallback
+      name.
+  - id: d
+    text: Both values, as an array.
+    explanation: An attribute has one value for one key.
+  correct_option: b
+  explanation: Correct. `OTEL_SERVICE_NAME` replaces any `service.name` from the attribute
+    list, without an error.
+- id: ats074-final-q02
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Explain span, metric stream and log record identity
+  source_readings:
+  - sections/section-010/module-01/course-03-identity-of-spans-metric-streams-and-log-records.md
+  prompt: A log record has an empty trace ID. Which cause is plausible?
+  options:
+  - id: a
+    text: The program wrote the log outside any span, or in a thread that did not
+      carry the span context.
+    explanation: Correct. The SDK copies the trace and span identifiers from the active
+      span only.
+  - id: b
+    text: Log records can never carry a trace ID.
+    explanation: Log records can carry trace and span identifiers.
+  - id: c
+    text: The metric temporality was set to delta.
+    explanation: Temporality only applies to metrics.
+  - id: d
+    text: The resource has no service version.
+    explanation: The resource does not affect the trace ID of a record.
+  correct_option: a
+  explanation: Correct. The SDK copies the trace and span identifiers from the active
+    span only.
+- id: ats074-final-q03
+  type: single_choice
+  difficulty: beginner
+  learning_objective: Explain which package library code imports and which package
+    an application installs
+  source_readings:
+  - sections/section-020/module-01/course-01-api-and-sdk-as-separate-packages.md
+  prompt: A Python library creates spans for outgoing calls. Which dependency should
+    the library declare, and why?
+  options:
+  - id: a
+    text: "`opentelemetry-sdk`, because the library must be able to export its own
+      spans."
+    explanation: This option makes every library choose its own pipeline, which is
+      what the split avoids.
+  - id: b
+    text: "`opentelemetry-exporter-otlp-proto-http`, because spans must be sent over
+      OTLP."
+    explanation: The exporter is chosen by the application, not by a library.
+  - id: c
+    text: "`opentelemetry-api`, because the library only needs to ask for a tracer
+      and create spans, and the application decides what happens to them."
+    explanation: Correct. The API has no exporter, sampler or network code, so any
+      SDK the application installs can handle the library's spans.
+  - id: d
+    text: Nothing, because spans are created by the Collector.
+    explanation: The Collector receives telemetry; it does not create spans inside
+      application code.
+  correct_option: c
+  explanation: Correct. The API has no exporter, sampler or network code, so any SDK
+    the application installs can handle the library's spans.
+- id: ats074-final-q04
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Choose between the simple and the batch span processor
+  source_readings:
+  - sections/section-020/module-02/course-02-processors-readers-and-exporters.md
+  prompt: A busy service uses the simple span processor and its request latency rises.
+    Which change addresses the cause?
+  options:
+  - id: a
+    text: Switch the exporter from HTTP to gRPC and keep the simple processor.
+    explanation: The transport is not the cause; each span still blocks on its own
+      export.
+  - id: b
+    text: Lower the sampling ratio to 0 so no span is ever created.
+    explanation: This removes telemetry instead of fixing the pipeline.
+  - id: c
+    text: Switch to the batch processor, which queues finished spans and exports them
+      in groups on a background thread.
+    explanation: Correct. The simple processor exports each span as it ends, on the
+      calling path; batching moves the export off it.
+  - id: d
+    text: Increase `OTEL_RESOURCE_ATTRIBUTES`.
+    explanation: Resource attributes do not change the export path.
+  correct_option: c
+  explanation: Correct. The simple processor exports each span as it ends, on the
+    calling path; batching moves the export off it.
+- id: ats074-final-q05
+  type: single_choice
+  difficulty: beginner
+  learning_objective: Explain why the SDK must be configured before the instrumented
+    work starts
+  source_readings:
+  - sections/section-030/module-01/course-01-how-sdk-initialization-builds-the-pipeline.md
+  prompt: Why must an application register its SDK providers before the instrumented
+    work starts?
+  options:
+  - id: a
+    text: Spans that start earlier are created by the no-op implementation and are
+      not recreated later.
+    explanation: Correct. The API does nothing until a provider is registered, and
+      lost spans cannot be replayed.
+  - id: b
+    text: The Collector cannot accept any data that arrives after start-up.
+    explanation: The Collector accepts data at any time.
+  - id: c
+    text: Registration automatically replays every earlier span to the exporter.
+    explanation: The no-op tracer stored nothing, so there is nothing to replay.
+  correct_option: a
+  explanation: Correct. The API does nothing until a provider is registered, and lost
+    spans cannot be replayed.
+- id: ats074-final-q06
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Diagnose a resource list with a wrong separator
+  source_readings:
+  - sections/section-030/module-01/course-03-building-the-resource.md
+  prompt: OTEL_RESOURCE_ATTRIBUTES is "deployment.environment.name=staging;service.version=2.4.0".
+    What is the result?
+  options:
+  - id: a
+    text: 'Two attributes: the environment and the version.'
+    explanation: A semicolon is not a separator.
+  - id: b
+    text: The SDK refuses to export until the value is fixed.
+    explanation: The SDK still exports.
+  - id: c
+    text: One attribute whose value includes the text after the semicolon, so service.version
+      is missing.
+    explanation: Correct. Pairs are split at commas only, so the identity is wrong
+      while telemetry still arrives.
+  correct_option: c
+  explanation: Correct. Pairs are split at commas only, so the identity is wrong while
+    telemetry still arrives.
+- id: ats074-final-q07
+  type: single_choice
+  difficulty: beginner
+  learning_objective: Name the object that owns the Resource and the span processors
+    in the tracing SDK
+  source_readings:
+  - sections/section-040/module-01/course-01-tracer-provider-resource-and-tracer.md
+  prompt: Which object of the tracing SDK holds the Resource and the list of span
+    processors, and creates tracers?
+  options:
+  - id: a
+    text: The `TracerProvider`.
+    explanation: 'Correct. The provider owns the configuration: the Resource, the
+      sampler, the span processors and the limits. `get_tracer` returns a tracer that
+      uses them.'
+  - id: b
+    text: The `Tracer`.
+    explanation: A tracer creates spans and carries an instrumentation scope name
+      and version. It does not own the processors.
+  - id: c
+    text: The `BatchSpanProcessor`.
+    explanation: A processor receives finished spans and passes them to an exporter.
+      It does not create tracers.
+  - id: d
+    text: The `OTLPSpanExporter`.
+    explanation: An exporter sends spans over OTLP. It has no Resource of its own
+      and does not create tracers.
+  correct_option: a
+  explanation: The tracer provider is the root of the tracing SDK. It holds the Resource,
+    the sampler, the processors and the limits.
+- id: ats074-final-q08
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Account for cardinality in metric attributes
+  source_readings:
+  - sections/section-040/module-02/course-03-readers-export-interval-cardinality-and-exemplars.md
+  prompt: A developer adds the attribute `user.id` to a request counter. The service
+    has two million users. What is the main problem, and what is a fix?
+  options:
+  - id: a
+    text: 'The counter becomes a gauge. Fix: use a histogram.'
+    explanation: Attributes never change the instrument type.
+  - id: b
+    text: 'The metric reader exports too often. Fix: raise the export interval.'
+    explanation: The interval changes how often data leaves, not how many series exist.
+  - id: c
+    text: 'Each unique value creates a separate time series, so memory and storage
+      grow without limit. Fix: drop the attribute, for example with a view, and put
+      the user ID in logs or traces.'
+    explanation: Correct. Identifiers with many values belong in logs and traces.
+      A view can remove the attribute from the metric.
+  - id: d
+    text: 'The Collector rejects attributes with more than 128 characters. Fix: shorten
+      the value.'
+    explanation: Length is not the problem. The number of distinct values is.
+  correct_option: c
+  explanation: A high-cardinality attribute creates one series per value. Remove it
+    from metrics and keep the identifier in logs or traces.
+- id: ats074-final-q09
+  type: single_choice
+  difficulty: beginner
+  learning_objective: Explain how a parent-based ratio sampler decides for a span
+    that has a parent
+  source_readings:
+  - sections/section-050/module-01/course-01-providers-samplers-and-the-span-path.md
+  prompt: A service uses `OTEL_TRACES_SAMPLER=parentbased_traceidratio` with `OTEL_TRACES_SAMPLER_ARG=0.25`.
+    A request arrives with a trace context whose sampled flag is set, and the service
+    starts a child span. What does the sampler do with the new span?
+  options:
+  - id: a
+    text: It applies the ratio of 0.25 to the trace ID, so the span is kept in one
+      of four cases.
+    explanation: The ratio applies only to root spans. A span with a parent follows
+      the parent.
+  - id: b
+    text: It drops the span, because a ratio below 1.0 always drops remote parents.
+    explanation: A ratio does not drop remote parents, and the parent-based sampler
+      uses the decision of the remote parent.
+  - id: c
+    text: It records and samples the span, because it follows the decision of the
+      sampled parent.
+    explanation: Correct. The parent-based samplers delegate to the parent decision
+      when a parent exists. The ratio applies only to root spans, which have no parent.
+      A parent with the sampled flag set therefore gives a sampled child.
+  - id: d
+    text: It records the span but does not sample it, because the service is not the
+      root.
+    explanation: There is no recording-only outcome for a sampled parent. The child
+      follows the sampled decision.
+  correct_option: c
+  explanation: The parent-based samplers delegate to the parent decision when a parent
+    exists. The ratio applies only to root spans, which have no parent. A parent with
+    the sampled flag set therefore gives a sampled child.
+- id: ats074-final-q10
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Explain why spans can be lost when a pod stops
+  source_readings:
+  - sections/section-050/module-01/course-03-flush-and-shutdown.md
+  prompt: A pod uses the batching span processor with a schedule delay of 20 seconds.
+    The pod receives `SIGTERM`, and the application calls `os._exit(0)` in its handler.
+    What happens to the spans in the queue?
+  options:
+  - id: a
+    text: They are exported, because Kubernetes waits for the grace period.
+    explanation: The grace period only delays `SIGKILL`. It does not run the flush
+      when the handler exits at once.
+  - id: b
+    text: They are exported, because the SDK flushes in an exit handler.
+    explanation: The exit handler is skipped by `os._exit`, so the flush does not
+      run.
+  - id: c
+    text: They are lost, because `os._exit` ends the process without running the exit
+      handlers that flush the queue.
+    explanation: Correct. `os._exit` ends the interpreter at once and skips the `atexit`
+      handlers, so the provider never calls shutdown. Spans that were still queued
+      are lost.
+  - id: d
+    text: They are written to the pod log and replayed by the next pod.
+    explanation: The SDK keeps no copy of queued spans outside the process, and the
+      next pod does not replay them.
+  correct_option: c
+  explanation: "`os._exit` ends the interpreter at once and skips the `atexit` handlers,
+    so the provider never calls shutdown. Spans that were still queued are lost."
+- id: ats074-final-q11
+  type: single_choice
+  difficulty: beginner
+  learning_objective: Explain what a Context is and how an immutable Context changes
+  source_readings:
+  - sections/section-060/module-01/course-01-the-context-object-and-the-active-context.md
+  prompt: A service calls `baggage.set_baggage("mission", "survey")` without passing
+    a context and ignores the return value. A later call to `baggage.get_all()` in
+    the same thread returns nothing. Why?
+  options:
+  - id: a
+    text: The baggage API only works after the SDK is installed.
+    explanation: The API works without the SDK. The cause is different.
+  - id: b
+    text: A Context is immutable. The function returns a new Context, and the code
+      never attached it, so the active context did not change.
+    explanation: Correct. Set functions return a new Context. The active context changes
+      only when code calls `context.attach` with it.
+  - id: c
+    text: Baggage entries expire after one second.
+    explanation: Baggage has no expiry time.
+  - id: d
+    text: "`get_all` reads only the baggage that arrived in an HTTP header."
+    explanation: "`get_all` reads the baggage of the Context it is given or of the
+      active context, whatever its origin."
+  correct_option: b
+  explanation: A Context is immutable. `set_baggage` returns a new Context, and the
+    active context changes only after `context.attach`.
+- id: ats074-final-q12
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Choose propagators with OTEL_PROPAGATORS
+  source_readings:
+  - sections/section-060/module-02/course-01-propagators-inject-extract-and-otel-propagators.md
+  prompt: The `shuttle` service sets `OTEL_PROPAGATORS=tracecontext,baggage`. The
+    `probe` service sets `OTEL_PROPAGATORS=b3`. Requests succeed. What does the trace
+    look like?
+  options:
+  - id: a
+    text: One trace, because both services use the same SDK.
+    explanation: The header format must match, not the SDK.
+  - id: b
+    text: Two traces. The `shuttle` writes `traceparent` and `baggage`, and the `probe`
+      reads only `b3`, so it starts a new trace.
+    explanation: Correct. The receiver list has no propagator that reads what the
+      sender wrote.
+  - id: c
+    text: One trace, because `b3` is a superset of `tracecontext`.
+    explanation: The `b3` format uses its own headers.
+  - id: d
+    text: The `probe` fails at start because the formats differ.
+    explanation: The services do not check each other. Each one starts from its own
+      variable.
+  correct_option: b
+  explanation: Sender and receiver choose their lists separately, and a trace continues
+    only when they share a format.
+- id: ats074-final-q13
+  type: single_choice
+  difficulty: beginner
+  learning_objective: Distinguish a language instrumentation agent from a Collector
+    agent
+  source_readings:
+  - sections/section-070/module-01/course-01-what-an-instrumentation-agent-does.md
+  prompt: A team runs the Collector as a DaemonSet and says that all applications
+    are now instrumented. A Java service on a node has no OpenTelemetry code and no
+    instrumentation agent. What reaches the backend from that service?
+  options:
+  - id: a
+    text: Spans for every incoming request, because the Collector patches the process
+      from the node.
+    explanation: The Collector does not attach to application processes.
+  - id: b
+    text: Nothing from the application code, because the Collector only receives,
+      processes and forwards telemetry that something else created.
+    explanation: Correct. A Collector agent moves telemetry. A language instrumentation
+      agent or SDK code creates it.
+  - id: c
+    text: Spans for outgoing requests only, because the Collector sees network traffic.
+    explanation: The Collector does not inspect network traffic to create spans.
+  - id: d
+    text: Metrics only, because the Collector reads them from the process.
+    explanation: The Collector does not read metrics out of an application process.
+  correct_option: b
+  explanation: Correct. A Collector agent moves telemetry. A language instrumentation
+    agent or SDK code creates it.
+- id: ats074-final-q14
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Name what automatic instrumentation cannot record
+  source_readings:
+  - sections/section-070/module-01/course-03-what-the-agent-covers-and-what-it-cannot.md
+  prompt: A zero-code Flask service handles `/dock` and picks a berth in the handler.
+    The team wants the berth in the trace. What is the right approach?
+  options:
+  - id: a
+    text: Change `OTEL_TRACES_EXPORTER`, because the agent can read local variables
+      when exporting.
+    explanation: The agent sees library calls, not local variables.
+  - id: b
+    text: Add a Collector processor that reads the berth from the request.
+    explanation: The Collector only sees data that already exists in the telemetry.
+  - id: c
+    text: Add a manual span or attribute with the OpenTelemetry API in the handler,
+      and keep the agent.
+    explanation: Correct. The API works with the agent. The code uses the tracer the
+      agent registered and adds the business fact.
+  - id: d
+    text: Disable the Flask instrumentation and rely on logs.
+    explanation: Disabling the instrumentation removes the data the agent does record.
+  correct_option: c
+  explanation: Correct. The API works with the agent. The code uses the tracer the
+    agent registered and adds the business fact.

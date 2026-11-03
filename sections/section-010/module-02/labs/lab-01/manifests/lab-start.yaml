@@ -1,0 +1,230 @@
+# Starfleet telemetry example: the OpenTelemetry Collector (prints everything it receives with the debug
+# exporter) and the shuttle service (real OpenTelemetry Python SDK, configured through OTEL_* variables).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: starfleet
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: collector-config
+  namespace: starfleet
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    exporters:
+      debug:
+        verbosity: detailed
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          exporters: [debug]
+        metrics:
+          receivers: [otlp]
+          exporters: [debug]
+        logs:
+          receivers: [otlp]
+          exporters: [debug]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: collector
+  namespace: starfleet
+  labels:
+    app: collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: collector
+  template:
+    metadata:
+      labels:
+        app: collector
+    spec:
+      containers:
+        - name: collector
+          image: otel/opentelemetry-collector-contrib:0.164.0
+          args: ["--config=/conf/config.yaml"]
+          ports:
+            - containerPort: 4317
+            - containerPort: 4318
+          volumeMounts:
+            - name: config
+              mountPath: /conf
+      volumes:
+        - name: config
+          configMap:
+            name: collector-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: collector
+  namespace: starfleet
+spec:
+  selector:
+    app: collector
+  ports:
+    - name: otlp-grpc
+      port: 4317
+    - name: otlp-http
+      port: 4318
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shuttle-app
+  namespace: starfleet
+data:
+  app.py: |
+    # Example service for the Starfleet telemetry labs. It uses the real
+    # OpenTelemetry Python SDK and sends traces, metrics and logs over OTLP/HTTP.
+    # The resource, the exporters, the metric temporality and the exemplar filter
+    # come from standard OTEL_* environment variables set on the Deployment.
+    import logging
+    import random
+    import time
+
+    from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
+    from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.metrics import Observation
+    from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+    from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+    from opentelemetry.sdk.metrics import MeterProvider
+    from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    from opentelemetry.trace import SpanKind, Status, StatusCode
+
+    # Resource.create() reads OTEL_SERVICE_NAME and OTEL_RESOURCE_ATTRIBUTES.
+    resource = Resource.create()
+
+    tracer_provider = TracerProvider(resource=resource)
+    tracer_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+
+    # The exporter reads OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE. The
+    # reader reads OTEL_METRIC_EXPORT_INTERVAL. The provider reads
+    # OTEL_METRICS_EXEMPLAR_FILTER.
+    reader = PeriodicExportingMetricReader(OTLPMetricExporter())
+    meter_provider = MeterProvider(resource=resource, metric_readers=[reader])
+
+    logger_provider = LoggerProvider(resource=resource)
+    logger_provider.add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter()))
+    log = logging.getLogger("starfleet.shuttle")
+    log.setLevel(logging.INFO)
+    log.addHandler(LoggingHandler(level=logging.INFO, logger_provider=logger_provider))
+
+    # Two instrumentation scopes: the orders code and an HTTP client library.
+    orders_tracer = tracer_provider.get_tracer("starfleet.shuttle.orders", "1.2.0")
+    http_tracer = tracer_provider.get_tracer("starfleet.shuttle.http", "0.9.0")
+    meter = meter_provider.get_meter("starfleet.shuttle.orders", "1.2.0")
+
+    requests_total = meter.create_counter(
+        "shuttle.requests", unit="{request}", description="Requests handled by the shuttle"
+    )
+    request_duration = meter.create_histogram(
+        "shuttle.request.duration", unit="s", description="Time to handle one request"
+    )
+    queue_depth = meter.create_up_down_counter(
+        "shuttle.queue.depth", unit="{request}", description="Requests waiting in the queue"
+    )
+
+    fuel = {"level": 80.0}
+
+
+    def read_fuel(options):
+        yield Observation(fuel["level"], {"shuttle.tank": "main"})
+
+
+    meter.create_observable_gauge(
+        "shuttle.fuel.level", callbacks=[read_fuel], unit="1", description="Fuel level as a ratio"
+    )
+
+    ROUTES = ["/orders", "/orders/{id}", "/status"]
+
+    while True:
+        route = random.choice(ROUTES)
+        failed = random.random() < 0.2
+        status_code = 500 if failed else 200
+        queue_depth.add(1)
+        started = time.time()
+        with orders_tracer.start_as_current_span("GET " + route, kind=SpanKind.SERVER) as span:
+            span.set_attribute("http.request.method", "GET")
+            span.set_attribute("http.route", route)
+            span.set_attribute("http.response.status_code", status_code)
+            span.add_event("order.validated", {"order.items": 3})
+            with http_tracer.start_as_current_span("HTTP GET probe", kind=SpanKind.CLIENT) as child:
+                child.set_attribute("http.request.method", "GET")
+                child.set_attribute("server.address", "probe.starfleet.svc")
+                time.sleep(random.uniform(0.01, 0.08))
+            if failed:
+                span.set_status(Status(StatusCode.ERROR, "upstream failed"))
+                log.error("request failed on %s", route)
+            else:
+                log.info("request handled on %s", route)
+            attributes = {"http.request.method": "GET", "http.route": route,
+                          "http.response.status_code": status_code}
+            requests_total.add(1, attributes)
+            request_duration.record(time.time() - started, attributes)
+        queue_depth.add(-1)
+        fuel["level"] = max(5.0, fuel["level"] - random.uniform(0.0, 0.2))
+        time.sleep(1)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shuttle
+  namespace: starfleet
+  labels:
+    app: shuttle
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shuttle
+  template:
+    metadata:
+      labels:
+        app: shuttle
+    spec:
+      containers:
+        - name: shuttle
+          image: python:3.12-slim
+          command:
+            - sh
+            - -c
+            - pip install --quiet --no-cache-dir opentelemetry-sdk==1.45.2 opentelemetry-exporter-otlp-proto-http==1.45.2 && python /app/app.py
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: "shuttle"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "service.namespace=starfleet,service.version=1.0.0,deployment.environment.name=training"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://collector.starfleet.svc:4318"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
+            - name: OTEL_METRIC_EXPORT_INTERVAL
+              value: "5000"
+            - name: OTEL_BSP_SCHEDULE_DELAY
+              value: "1000"
+            - name: OTEL_METRICS_EXEMPLAR_FILTER
+              value: "always_off"
+          volumeMounts:
+            - name: app
+              mountPath: /app
+      volumes:
+        - name: app
+          configMap:
+            name: shuttle-app

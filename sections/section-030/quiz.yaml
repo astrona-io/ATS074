@@ -1,0 +1,271 @@
+# Knowledge check for section 030. Listed in astrona.yaml as a `type: quiz` entry after the capstone lab.
+schema_version: 1
+kind: question_bank
+id: ats074-030
+course_id: ATS074
+exam_code: OTCA
+status: draft
+provenance: Original practice material written for this course; not official exam
+  questions.
+scope:
+  type: section
+  id: section-030
+  title: Configuration
+questions:
+- id: ats074-030-q01
+  type: single_choice
+  difficulty: beginner
+  learning_objective: Explain why the SDK must be configured before the instrumented
+    work starts
+  source_readings:
+  - sections/section-030/module-01/course-01-how-sdk-initialization-builds-the-pipeline.md
+  prompt: Why must an application register its SDK providers before the instrumented
+    work starts?
+  options:
+  - id: a
+    text: Spans that start earlier are created by the no-op implementation and are
+      not recreated later.
+    explanation: Correct. The API does nothing until a provider is registered, and
+      lost spans cannot be replayed.
+  - id: b
+    text: The Collector cannot accept any data that arrives after start-up.
+    explanation: The Collector accepts data at any time.
+  - id: c
+    text: Registration automatically replays every earlier span to the exporter.
+    explanation: The no-op tracer stored nothing, so there is nothing to replay.
+  correct_option: a
+  explanation: Correct. The API does nothing until a provider is registered, and lost
+    spans cannot be replayed.
+- id: ats074-030-q02
+  type: single_choice
+  difficulty: beginner
+  learning_objective: Distinguish the API from the SDK and name what records and exports
+    data
+  source_readings:
+  - sections/section-030/module-01/course-01-how-sdk-initialization-builds-the-pipeline.md
+  prompt: An application imports only the OpenTelemetry API package and calls the
+    API to create spans. What happens to the spans?
+  options:
+  - id: a
+    text: They are exported to localhost on port 4318 by default.
+    explanation: The API has no exporter.
+  - id: b
+    text: They are created by a no-op implementation and are not recorded or exported.
+    explanation: Correct. The SDK records and exports, and the application must install
+      and register it.
+  - id: c
+    text: They are stored in memory until an operator installs the SDK later.
+    explanation: A no-op tracer stores nothing.
+  correct_option: b
+  explanation: Correct. The SDK records and exports, and the application must install
+    and register it.
+- id: ats074-030-q03
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Predict how the SDK parses boolean environment variables
+  source_readings:
+  - sections/section-030/module-01/course-02-reading-otel-environment-variables.md
+  prompt: A Deployment sets OTEL_SDK_DISABLED=yes. What does the SDK do?
+  options:
+  - id: a
+    text: It stays enabled, because only the text true in any letter case means true.
+    explanation: Correct. Every other value is false, and the SDK may log a warning.
+  - id: b
+    text: It disables itself, because yes is a common true value.
+    explanation: The specification forbids extra true values.
+  - id: c
+    text: It refuses to start and the pod crashes.
+    explanation: An invalid boolean gives at most a warning.
+  correct_option: a
+  explanation: Correct. Every other value is false, and the SDK may log a warning.
+- id: ats074-030-q04
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Predict how the SDK handles an unparsable numeric value
+  source_readings:
+  - sections/section-030/module-01/course-02-reading-otel-environment-variables.md
+  prompt: A Deployment sets OTEL_METRIC_EXPORT_INTERVAL=5s. What does the SDK use?
+  options:
+  - id: a
+    text: Five seconds, because it understands the unit.
+    explanation: Time values are whole numbers of milliseconds.
+  - id: b
+    text: The default of 60000 milliseconds, after a warning that the value cannot
+      be parsed.
+    explanation: Correct. An unparsable number is treated as unset.
+  - id: c
+    text: Zero, so metrics export continuously.
+    explanation: An invalid value never becomes zero.
+  correct_option: b
+  explanation: Correct. An unparsable number is treated as unset.
+- id: ats074-030-q05
+  type: single_choice
+  difficulty: beginner
+  learning_objective: Identify configuration owned by the application SDK and language-specific
+    support
+  source_readings:
+  - sections/section-030/module-01/course-02-reading-otel-environment-variables.md
+  prompt: Why check the documentation of the selected language SDK before relying
+    on an OTEL_ variable?
+  options:
+  - id: a
+    text: Every language ignores all environment variables.
+    explanation: Many languages support the standard variables.
+  - id: b
+    text: Support and precedence can differ by SDK and version, and an unsupported
+      variable is simply never read.
+    explanation: Correct. A variable name alone is not evidence of behavior.
+  - id: c
+    text: Every environment variable is encrypted automatically.
+    explanation: Environment variables are not secret storage.
+  correct_option: b
+  explanation: Correct. A variable name alone is not evidence of behavior.
+- id: ats074-030-q06
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Explain which source wins for service.name
+  source_readings:
+  - sections/section-030/module-01/course-03-building-the-resource.md
+  prompt: The Deployment sets OTEL_SERVICE_NAME=shuttle and OTEL_RESOURCE_ATTRIBUTES=service.name=probe,service.version=2.
+    The code passes no resource attributes. What is service.name?
+  options:
+  - id: a
+    text: probe, because the attribute list is more specific.
+    explanation: OTEL_SERVICE_NAME takes precedence over the list.
+  - id: b
+    text: shuttle, because OTEL_SERVICE_NAME wins over service.name in OTEL_RESOURCE_ATTRIBUTES.
+    explanation: Correct. The specification defines this precedence.
+  - id: c
+    text: unknown_service, because two sources conflict.
+    explanation: A conflict is resolved by precedence, not by dropping both.
+  correct_option: b
+  explanation: Correct. The specification defines this precedence.
+- id: ats074-030-q07
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Diagnose a resource list with a wrong separator
+  source_readings:
+  - sections/section-030/module-01/course-03-building-the-resource.md
+  prompt: OTEL_RESOURCE_ATTRIBUTES is "deployment.environment.name=staging;service.version=2.4.0".
+    What is the result?
+  options:
+  - id: a
+    text: 'Two attributes: the environment and the version.'
+    explanation: A semicolon is not a separator.
+  - id: b
+    text: The SDK refuses to export until the value is fixed.
+    explanation: The SDK still exports.
+  - id: c
+    text: One attribute whose value includes the text after the semicolon, so service.version
+      is missing.
+    explanation: Correct. Pairs are split at commas only, so the identity is wrong
+      while telemetry still arrives.
+  correct_option: c
+  explanation: Correct. Pairs are split at commas only, so the identity is wrong while
+    telemetry still arrives.
+- id: ats074-030-q08
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Match the OTLP protocol and endpoint to the Collector listener
+  source_readings:
+  - sections/section-030/module-02/course-01-configuring-the-otlp-exporter.md
+  prompt: An exporter uses http/protobuf and its endpoint is http://collector:4317,
+    where 4317 is the Collector gRPC listener. What is wrong?
+  options:
+  - id: a
+    text: The protocol and the listener do not match, so exports fail although the
+      port is reachable.
+    explanation: Correct. HTTP needs the HTTP receiver, port 4318 by default.
+  - id: b
+    text: The span display names are too long.
+    explanation: Names do not affect transport.
+  - id: c
+    text: The service display name is wrong.
+    explanation: Identity naming does not change transport.
+  correct_option: a
+  explanation: Correct. HTTP needs the HTTP receiver, port 4318 by default.
+- id: ats074-030-q09
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Explain when the SDK appends the signal path
+  source_readings:
+  - sections/section-030/module-02/course-01-configuring-the-otlp-exporter.md
+  prompt: OTEL_EXPORTER_OTLP_TRACES_ENDPOINT is http://collector:4318 and OTEL_EXPORTER_OTLP_ENDPOINT
+    is the same value. Over HTTP, where do trace batches go?
+  options:
+  - id: a
+    text: To /v1/traces, because the SDK always appends the path.
+    explanation: Only the general endpoint gets the path.
+  - id: b
+    text: To /, because a signal-specific endpoint is used as written, so the Collector
+      rejects the request.
+    explanation: Correct. Write the full URL with /v1/traces or remove the variable.
+  - id: c
+    text: To port 4317, because the SDK switches to gRPC.
+    explanation: The SDK does not switch protocol.
+  correct_option: b
+  explanation: Correct. Write the full URL with /v1/traces or remove the variable.
+- id: ats074-030-q10
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Choose the right sampler and predict its decisions
+  source_readings:
+  - sections/section-030/module-02/course-02-sampling-and-export-intervals.md
+  prompt: Which setting keeps about a quarter of new traces and lets downstream services
+    follow the first decision?
+  options:
+  - id: a
+    text: OTEL_TRACES_SAMPLER=always_on with OTEL_TRACES_SAMPLER_ARG=0.25
+    explanation: always_on ignores the argument.
+  - id: b
+    text: OTEL_TRACES_SAMPLER=parentbased_traceidratio with OTEL_TRACES_SAMPLER_ARG=0.25
+    explanation: Correct. The ratio applies to root spans and children follow the
+      parent.
+  - id: c
+    text: OTEL_TRACES_SAMPLER=always_off with OTEL_TRACES_SAMPLER_ARG=0.25
+    explanation: always_off samples no span.
+  correct_option: b
+  explanation: Correct. The ratio applies to root spans and children follow the parent.
+- id: ats074-030-q11
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Explain what a sampler that does not record means for the exporter
+  source_readings:
+  - sections/section-030/module-02/course-02-sampling-and-export-intervals.md
+  prompt: The service log shows recording=False for every run and the Collector receives
+    no spans but does receive metrics. Where is the cause?
+  options:
+  - id: a
+    text: The sampler, because metrics are not sampled and a non-recording span never
+      reaches the processor.
+    explanation: Correct. Changing the endpoint would not help.
+  - id: b
+    text: The Collector metrics pipeline.
+    explanation: Metrics arrive, so that pipeline works.
+  - id: c
+    text: The resource service name.
+    explanation: The name does not decide whether spans are recorded.
+  correct_option: a
+  explanation: Correct. Changing the endpoint would not help.
+- id: ats074-030-q12
+  type: single_choice
+  difficulty: advanced
+  learning_objective: Explain declarative configuration precedence
+  source_readings:
+  - sections/section-030/module-02/course-03-declarative-configuration-and-failure-modes.md
+  prompt: OTEL_CONFIG_FILE is set and the Deployment also sets OTEL_TRACES_SAMPLER=always_off.
+    The file defines a ratio sampler. Which sampler runs, assuming the SDK supports
+    the file?
+  options:
+  - id: a
+    text: always_off, because environment variables always win.
+    explanation: When the file is set, other SDK variables are ignored.
+  - id: b
+    text: The sampler from the file, because the other SDK environment variables are
+      ignored except those the file references.
+    explanation: Correct. This is a common reason a correct variable has no effect.
+  - id: c
+    text: Both, one after the other.
+    explanation: One sampler is configured for a tracer provider.
+  correct_option: b
+  explanation: Correct. This is a common reason a correct variable has no effect.

@@ -1,9 +1,10 @@
-# Reading-only content; YAML knowledge checks have a separate index.
+# Course manifest for ATS074. Each section lists its README, modules (landing, parts, lab Question reading and lab entry after the part tested, summary), a capstone and a quiz.
 training:
   id: ATS074
   title: 'OTCA: The OpenTelemetry API and SDK'
-  description: 'Detailed reading material and reusable YAML knowledge checks for OTCA: The OpenTelemetry
-    API and SDK. Technical content remains draft. No labs or playgrounds.'
+  description: Concept lessons, diagrams, playgrounds, graded labs, capstones and original scenario quizzes
+    covering every published objective in this OTCA domain. Labs run on kind (Kubernetes 1.35) with a Python
+    OpenTelemetry SDK service and an OpenTelemetry Collector. Technical content remains draft.
   certification:
     name: OpenTelemetry Certified Associate
     code: OTCA
@@ -19,144 +20,807 @@ training:
     - Context Propagation
     - Agents
 modules:
-- id: module-intro
-  title: Introduction
-  description: Audience, reading method and review process.
-  content:
-  - type: reading
+  - id: module-intro
     title: Introduction
-    path: sections/intro/README.md
-  - type: reading
-    title: Welcome To The Course
-    path: sections/intro/course-01-welcome.md
-  - type: reading
-    title: Get Your Machine Ready
-    path: sections/intro/course-02-get-your-machine-ready.md
-  - type: reading
-    title: How This Course Is Made
-    path: sections/intro/course-03-how-this-course-is-made.md
-- id: module-010
-  title: Data Model
-  description: Developed reading and reasoning for Data Model.
-  maturity: alpha
-  content:
-  - type: reading
-    title: Data Model
-    path: sections/section-010/README.md
-  - type: reading
-    title: Resources, Instrumentation Scope And Signal Envelopes
-    path: sections/section-010/module-01/course.md
-  - type: reading
-    title: Resources, Instrumentation Scope And Signal Envelopes
-    path: sections/section-010/module-01/course-01-resources-instrumentation-scope-and-signal-envelopes.md
-  - type: reading
-    title: Summary
-    path: sections/section-010/module-01/course-02-summary.md
-- id: module-020
-  title: Composability and Extension
-  description: Developed reading and reasoning for Composability and Extension.
-  maturity: alpha
-  content:
-  - type: reading
-    title: Composability and Extension
-    path: sections/section-020/README.md
-  - type: reading
-    title: API Independence, SDK Components And Extension Contracts
-    path: sections/section-020/module-01/course.md
-  - type: reading
-    title: API Independence, SDK Components And Extension Contracts
-    path: sections/section-020/module-01/course-01-api-independence-sdk-components-and-extension-contracts.md
-  - type: reading
-    title: Summary
-    path: sections/section-020/module-01/course-02-summary.md
-- id: module-030
-  title: Configuration
-  description: Developed reading and reasoning for Configuration.
-  maturity: alpha
-  content:
-  - type: reading
-    title: Configuration
-    path: sections/section-030/README.md
-  - type: reading
-    title: SDK Initialization, Resource Settings And Export Configuration
-    path: sections/section-030/module-01/course.md
-  - type: reading
-    title: SDK Initialization, Resource Settings And Export Configuration
-    path: sections/section-030/module-01/course-01-sdk-initialization-resource-settings-and-export-configuration.md
-  - type: reading
-    title: Summary
-    path: sections/section-030/module-01/course-02-summary.md
-- id: module-040
-  title: Signals (Tracing, Metric, Log)
-  description: Developed reading and reasoning for Signals (Tracing, Metric, Log).
-  maturity: alpha
-  content:
-  - type: reading
-    title: Signals (Tracing, Metric, Log)
-    path: sections/section-040/README.md
-  - type: reading
-    title: Tracing Requests Through Spans And Context
-    path: sections/section-040/module-01/course.md
-  - type: reading
-    title: Tracing Requests Through Spans And Context
-    path: sections/section-040/module-01/course-01-tracing-requests-through-spans-and-context.md
-  - type: reading
-    title: Counters, Gauges And Distribution Measurements
-    path: sections/section-040/module-01/course-02-counters-gauges-and-distribution-measurements.md
-  - type: reading
-    title: Logs And Events As Evidence Beside Metrics
-    path: sections/section-040/module-01/course-03-logs-and-events-as-evidence-beside-metrics.md
-  - type: reading
-    title: Summary
-    path: sections/section-040/module-01/course-04-summary.md
-- id: module-050
-  title: SDK Pipelines
-  description: Developed reading and reasoning for SDK Pipelines.
-  maturity: alpha
-  content:
-  - type: reading
-    title: SDK Pipelines
-    path: sections/section-050/README.md
-  - type: reading
-    title: Signal Providers, Processing, Readers And Shutdown
-    path: sections/section-050/module-01/course.md
-  - type: reading
-    title: Signal Providers, Processing, Readers And Shutdown
-    path: sections/section-050/module-01/course-01-signal-providers-processing-readers-and-shutdown.md
-  - type: reading
-    title: Summary
-    path: sections/section-050/module-01/course-02-summary.md
-- id: module-060
-  title: Context Propagation
-  description: Developed reading and reasoning for Context Propagation.
-  maturity: alpha
-  content:
-  - type: reading
-    title: Context Propagation
-    path: sections/section-060/README.md
-  - type: reading
-    title: Active Context, Injection, Extraction And Baggage
-    path: sections/section-060/module-01/course.md
-  - type: reading
-    title: Active Context, Injection, Extraction And Baggage
-    path: sections/section-060/module-01/course-01-active-context-injection-extraction-and-baggage.md
-  - type: reading
-    title: Summary
-    path: sections/section-060/module-01/course-02-summary.md
-- id: module-070
-  title: Agents
-  description: Developed reading and reasoning for Agents.
-  maturity: alpha
-  content:
-  - type: reading
-    title: Agents
-    path: sections/section-070/README.md
-  - type: reading
-    title: Instrumentation Agents And Local Collection Roles
-    path: sections/section-070/module-01/course.md
-  - type: reading
-    title: Instrumentation Agents And Local Collection Roles
-    path: sections/section-070/module-01/course-01-instrumentation-agents-and-local-collection-roles.md
-  - type: reading
-    title: Summary
-    path: sections/section-070/module-01/course-02-summary.md
+    description: Audience, learning approach, tool requirements and contribution process.
+    content:
+    - type: reading
+      title: Introduction
+      path: sections/intro/README.md
+    - type: reading
+      title: Welcome To The Course
+      path: sections/intro/course-01-welcome.md
+    - type: reading
+      title: Get Your Machine Ready
+      path: sections/intro/course-02-get-your-machine-ready.md
+    - type: reading
+      title: How This Course Is Made
+      path: sections/intro/course-03-how-this-course-is-made.md
+  - id: module-010
+    title: "Data Model"
+    description: >
+      Resources, instrumentation scope, signal identity, attributes, units, timestamps, temporality and exemplars, practised on a running SDK and Collector.
+    content:
+      - type: reading
+        title: "Data Model"
+        path: sections/section-010/README.md
+      - type: reading
+        title: "Resources, Instrumentation Scope And Signal Identity"
+        path: sections/section-010/module-01/course.md
+      - type: reading
+        title: "Resources And Service Identity"
+        path: sections/section-010/module-01/course-01-resources-and-service-identity.md
+      - type: reading
+        title: "Question"
+        path: sections/section-010/module-01/labs/lab-01/question.md
+      - type: lab
+        title: "Fix The Resource Of A Service Lab"
+        path: sections/section-010/module-01/labs/lab-01
+        difficulty: intermediate
+        estimated_duration: 25m
+        topic: opentelemetry-data-model
+        task_kind: fix
+        tags: [opentelemetry, resource, service-name, otel-resource-attributes, collector]
+        learning_goals:
+          - Set service.name through OTEL_SERVICE_NAME
+          - Set service namespace, version and environment as resource attributes
+          - Remove a per-request attribute from the resource and prove the change in the Collector output
+        resources:
+          - name: "OpenTelemetry Resource SDK specification"
+            url: https://opentelemetry.io/docs/specs/otel/resource/sdk/
+          - name: "OpenTelemetry Resource data model"
+            url: https://opentelemetry.io/docs/specs/otel/resource/data-model/
+      - type: reading
+        title: "Instrumentation Scope And Signal Envelopes"
+        path: sections/section-010/module-01/course-02-instrumentation-scope-and-signal-envelopes.md
+      - type: reading
+        title: "Identity Of Spans, Metric Streams And Log Records"
+        path: sections/section-010/module-01/course-03-identity-of-spans-metric-streams-and-log-records.md
+      - type: reading
+        title: "Summary"
+        path: sections/section-010/module-01/course-04-summary.md
+
+      - type: reading
+        title: "Attributes, Metric Points And Exemplars"
+        path: sections/section-010/module-02/course.md
+      - type: reading
+        title: "Attributes, Units And Timestamps"
+        path: sections/section-010/module-02/course-01-attributes-units-and-timestamps.md
+      - type: reading
+        title: "Metric Data Points And Temporality"
+        path: sections/section-010/module-02/course-02-metric-data-points-and-temporality.md
+      - type: reading
+        title: "Exemplars And Semantic Conventions"
+        path: sections/section-010/module-02/course-03-exemplars-and-semantic-conventions.md
+      - type: reading
+        title: "Question"
+        path: sections/section-010/module-02/labs/lab-01/question.md
+      - type: lab
+        title: "Delta Temporality And Exemplars Lab"
+        path: sections/section-010/module-02/labs/lab-01
+        difficulty: intermediate
+        estimated_duration: 25m
+        topic: opentelemetry-data-model
+        task_kind: fix
+        tags: [opentelemetry, metrics, temporality, delta, exemplars, collector]
+        learning_goals:
+          - Configure delta temporality with the OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE variable
+          - Allow exemplars with OTEL_METRICS_EXEMPLAR_FILTER
+          - Prove the delta sum and the exemplars in the Collector output
+        resources:
+          - name: "OpenTelemetry Metrics data model"
+            url: https://opentelemetry.io/docs/specs/otel/metrics/data-model/
+          - name: "OpenTelemetry Metrics SDK specification"
+            url: https://opentelemetry.io/docs/specs/otel/metrics/sdk/
+      - type: reading
+        title: "Summary"
+        path: sections/section-010/module-02/course-04-summary.md
+
+      - type: reading
+        title: "Question"
+        path: sections/section-010/capstone/labs/lab-01/question.md
+      - type: lab
+        title: "Data Model Capstone"
+        path: sections/section-010/capstone/labs/lab-01
+        difficulty: advanced
+        estimated_duration: 40m
+        topic: opentelemetry-data-model
+        task_kind: fix
+        tags: [opentelemetry, data-model, resource, temporality, exemplars, logs, collector]
+        learning_goals:
+          - Correct the resource of a service that has no name and a per-request attribute
+          - Configure delta temporality and exemplars and prove both in the Collector output
+          - Record the observed identity, temporality and unit in a ConfigMap
+        resources:
+          - name: "OpenTelemetry Resource SDK specification"
+            url: https://opentelemetry.io/docs/specs/otel/resource/sdk/
+          - name: "OpenTelemetry Resource data model"
+            url: https://opentelemetry.io/docs/specs/otel/resource/data-model/
+          - name: "OpenTelemetry Metrics data model"
+            url: https://opentelemetry.io/docs/specs/otel/metrics/data-model/
+          - name: "OpenTelemetry Metrics SDK specification"
+            url: https://opentelemetry.io/docs/specs/otel/metrics/sdk/
+      - type: quiz
+        title: "Knowledge Check: Data Model"
+        path: sections/section-010/quiz.yaml
+        pass_score: 70
+  - id: module-020
+    title: "Composability and Extension"
+    description: >
+      The API and SDK as separate packages, the no-op API, providers, processors, readers, exporters, samplers, propagators and custom extensions.
+    content:
+      - type: reading
+        title: "Section Overview"
+        path: sections/section-020/README.md
+
+      - type: reading
+        title: "API And SDK Separation"
+        path: sections/section-020/module-01/course.md
+      - type: reading
+        title: "API And SDK As Separate Packages"
+        path: sections/section-020/module-01/course-01-api-and-sdk-as-separate-packages.md
+      - type: reading
+        title: "The No-op API And Disabled SDKs"
+        path: sections/section-020/module-01/course-02-the-no-op-api-and-disabled-sdks.md
+      - type: reading
+        title: "API Packages, Stability And Versioning"
+        path: sections/section-020/module-01/course-03-api-packages-stability-and-versioning.md
+      - type: reading
+        title: "Question"
+        path: sections/section-020/module-01/labs/lab-01/question.md
+      - type: lab
+        title: "Restore Telemetry From A Silent Service Lab"
+        path: sections/section-020/module-01/labs/lab-01
+        difficulty: intermediate
+        estimated_duration: 25m
+        topic: opentelemetry
+        task_kind: fix
+        tags: [opentelemetry, api, sdk, otel-sdk-disabled, resource, service-name, collector]
+        learning_goals:
+          - Find out why a service exports nothing although its instrumentation code is correct
+          - Re-enable the SDK and give the service a name through environment variables
+          - Record the tracer class, scope name and SDK version as evidence
+        resources:
+          - name: "OpenTelemetry specification: Overview"
+            url: https://opentelemetry.io/docs/specs/otel/overview/
+          - name: "OpenTelemetry SDK environment variables"
+            url: https://opentelemetry.io/docs/languages/sdk-configuration/general/
+      - type: reading
+        title: "Summary"
+        path: sections/section-020/module-01/course-04-summary.md
+
+      - type: reading
+        title: "SDK Components And Extension Contracts"
+        path: sections/section-020/module-02/course.md
+      - type: reading
+        title: "Providers, Resources And Instrumentation Scope"
+        path: sections/section-020/module-02/course-01-providers-resources-and-instrumentation-scope.md
+      - type: reading
+        title: "Processors, Readers And Exporters"
+        path: sections/section-020/module-02/course-02-processors-readers-and-exporters.md
+      - type: reading
+        title: "Samplers, Propagators And Custom Extensions"
+        path: sections/section-020/module-02/course-03-samplers-propagators-and-custom-extensions.md
+      - type: reading
+        title: "Question"
+        path: sections/section-020/module-02/labs/lab-01/question.md
+      - type: lab
+        title: "Repair A Misconfigured SDK Pipeline Lab"
+        path: sections/section-020/module-02/labs/lab-01
+        difficulty: intermediate
+        estimated_duration: 30m
+        topic: opentelemetry
+        task_kind: fix
+        tags: [opentelemetry, sdk, span-processor, sampler, otlp, custom-processor, collector]
+        learning_goals:
+          - Correct the OTLP endpoint port for an HTTP exporter
+          - Replace the simple span processor with the custom and batch processors and change the sampler
+          - Record the processor list, port and custom attribute value as evidence
+        resources:
+          - name: "OpenTelemetry SDK specification"
+            url: https://opentelemetry.io/docs/specs/otel/trace/sdk/
+          - name: "OTLP exporter configuration"
+            url: https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/
+      - type: reading
+        title: "Summary"
+        path: sections/section-020/module-02/course-04-summary.md
+
+      - type: reading
+        title: "Question"
+        path: sections/section-020/capstone/labs/lab-01/question.md
+      - type: lab
+        title: "Composability And Extension Capstone"
+        path: sections/section-020/capstone/labs/lab-01
+        difficulty: advanced
+        estimated_duration: 45m
+        topic: opentelemetry
+        task_kind: fix
+        tags: [opentelemetry, api, sdk, resource, otlp, span-processor, sampler, propagator, collector]
+        learning_goals:
+          - Register the SDK and name the service while keeping an existing resource attribute
+          - Fix the exporter port, the processor chain, the sampler and the propagators in one Deployment
+          - Record the tracer class, injected header and SDK version from the pod and Collector logs
+        resources:
+          - name: "OpenTelemetry context propagation"
+            url: https://opentelemetry.io/docs/concepts/context-propagation/
+          - name: "OpenTelemetry Python instrumentation"
+            url: https://opentelemetry.io/docs/languages/python/instrumentation/
+      - type: quiz
+        title: "Knowledge Check: Composability and Extension"
+        path: sections/section-020/quiz.yaml
+        pass_score: 70
+  - id: module-030
+    title: "Configuration"
+    description: >
+      SDK initialization, OTEL environment variables, resources, the OTLP exporter, sampling, export intervals and declarative configuration.
+    content:
+      - type: reading
+        title: "Configuration"
+        path: sections/section-030/README.md
+
+      - type: reading
+        title: "SDK Initialization, Environment Variables And Resources"
+        path: sections/section-030/module-01/course.md
+      - type: reading
+        title: "How SDK Initialization Builds The Pipeline"
+        path: sections/section-030/module-01/course-01-how-sdk-initialization-builds-the-pipeline.md
+      - type: reading
+        title: "Reading OTEL Environment Variables"
+        path: sections/section-030/module-01/course-02-reading-otel-environment-variables.md
+      - type: reading
+        title: "Building The Resource"
+        path: sections/section-030/module-01/course-03-building-the-resource.md
+      - type: reading
+        title: "Question"
+        path: sections/section-030/module-01/labs/lab-01/question.md
+      - type: lab
+        title: "Fix The Identity And Environment Variables Of The shuttle Service"
+        path: sections/section-030/module-01/labs/lab-01
+        difficulty: intermediate
+        estimated_duration: 25m
+        topic: opentelemetry-configuration
+        task_kind: fix
+        tags: [opentelemetry, sdk, environment-variables, resource, service-name, otel-resource-attributes]
+        learning_goals:
+          - Enable an SDK that OTEL_SDK_DISABLED switched off
+          - Resolve the precedence of OTEL_SERVICE_NAME over OTEL_RESOURCE_ATTRIBUTES
+          - Write OTEL_RESOURCE_ATTRIBUTES with the correct comma-separated format and verify the resource at the Collector
+        resources:
+          - name: "OpenTelemetry SDK environment variables"
+            url: https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/
+          - name: "OpenTelemetry Resource SDK"
+            url: https://opentelemetry.io/docs/specs/otel/resource/sdk/
+      - type: reading
+        title: "Summary"
+        path: sections/section-030/module-01/course-04-summary.md
+
+      - type: reading
+        title: "Exporter, Sampler And Declarative Configuration"
+        path: sections/section-030/module-02/course.md
+      - type: reading
+        title: "Configuring The OTLP Exporter"
+        path: sections/section-030/module-02/course-01-configuring-the-otlp-exporter.md
+      - type: reading
+        title: "Sampling And Export Intervals"
+        path: sections/section-030/module-02/course-02-sampling-and-export-intervals.md
+      - type: reading
+        title: "Declarative Configuration And Failure Modes"
+        path: sections/section-030/module-02/course-03-declarative-configuration-and-failure-modes.md
+      - type: reading
+        title: "Question"
+        path: sections/section-030/module-02/labs/lab-01/question.md
+      - type: lab
+        title: "Repair The Exporter, Sampler And Interval Settings"
+        path: sections/section-030/module-02/labs/lab-01
+        difficulty: intermediate
+        estimated_duration: 30m
+        topic: opentelemetry-configuration
+        task_kind: fix
+        tags: [opentelemetry, otlp, exporter, sampler, traceidratio, metric-export-interval, collector]
+        learning_goals:
+          - Match the OTLP HTTP exporter to the Collector HTTP listener
+          - Configure a parent-based ratio sampler with OTEL_TRACES_SAMPLER and OTEL_TRACES_SAMPLER_ARG
+          - Set the metric export interval in milliseconds and confirm delivery at the Collector
+        resources:
+          - name: "OTLP exporter configuration"
+            url: https://opentelemetry.io/docs/specs/otel/protocol/exporter/
+          - name: "SDK environment variables"
+            url: https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/
+      - type: reading
+        title: "Summary"
+        path: sections/section-030/module-02/course-04-summary.md
+
+      - type: reading
+        title: "Question"
+        path: sections/section-030/capstone/labs/lab-01/question.md
+      - type: lab
+        title: "Capstone: Configure The shuttle SDK End To End"
+        path: sections/section-030/capstone/labs/lab-01
+        difficulty: advanced
+        estimated_duration: 45m
+        topic: opentelemetry-configuration
+        task_kind: fix
+        tags: [opentelemetry, sdk, otlp, resource, sampler, batch-processor, secret, headers]
+        learning_goals:
+          - Find and fix several configuration faults in one SDK deployment
+          - Use a signal-specific endpoint correctly and verify delivery at the Collector
+          - Keep OTLP authentication headers in a Kubernetes Secret
+        resources:
+          - name: "SDK environment variables"
+            url: https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/
+          - name: "OTLP exporter configuration"
+            url: https://opentelemetry.io/docs/specs/otel/protocol/exporter/
+
+      - type: quiz
+        title: "Configuration Quiz"
+        path: sections/section-030/quiz.yaml
+        pass_score: 70
+  - id: module-040
+    title: "Signals (Tracing, Metric, Log)"
+    description: >
+      Tracing with spans, metrics with instruments and aggregation, and logs with trace correlation.
+    content:
+      - type: reading
+        title: "Signals (Tracing, Metric, Log)"
+        path: sections/section-040/README.md
+      - type: reading
+        title: "Tracing With The OpenTelemetry API And SDK"
+        path: sections/section-040/module-01/course.md
+      - type: reading
+        title: "The Tracer Provider, The Resource And The Tracer"
+        path: sections/section-040/module-01/course-01-tracer-provider-resource-and-tracer.md
+      - type: reading
+        title: "Span Anatomy And Parent-Child Structure"
+        path: sections/section-040/module-01/course-02-span-anatomy-and-parent-child.md
+      - type: reading
+        title: "Span Processors, Samplers And Exporters"
+        path: sections/section-040/module-01/course-03-processors-samplers-and-exporters.md
+      - type: reading
+        title: "Question"
+        path: sections/section-040/module-01/labs/lab-01/question.md
+      - type: lab
+        title: "Fix Trace Identity, Sampling And Error Recording Lab"
+        path: sections/section-040/module-01/labs/lab-01
+        difficulty: intermediate
+        estimated_duration: 30m
+        topic: tracing
+        task_kind: fix
+        tags: [opentelemetry, tracing, resource, sampler, span-status, collector, python-sdk]
+        learning_goals:
+          - Set the service name and resource attributes of a tracing application with standard OTEL environment variables
+          - Replace a sampler that drops every trace and confirm parent-child spans in the Collector log
+          - Make a failed span record its exception and the Error status
+        resources:
+          - name: "OpenTelemetry Traces API specification"
+            url: https://opentelemetry.io/docs/specs/otel/trace/api/
+          - name: "OpenTelemetry Trace SDK specification"
+            url: https://opentelemetry.io/docs/specs/otel/trace/sdk/
+          - name: "OpenTelemetry Python instrumentation"
+            url: https://opentelemetry.io/docs/languages/python/instrumentation/
+      - type: reading
+        title: "Summary"
+        path: sections/section-040/module-01/course-04-summary.md
+      - type: reading
+        title: "Metrics With The OpenTelemetry SDK"
+        path: sections/section-040/module-02/course.md
+      - type: reading
+        title: "Meters And Instruments"
+        path: sections/section-040/module-02/course-01-meters-and-instruments.md
+      - type: reading
+        title: "Aggregation, Temporality And Views"
+        path: sections/section-040/module-02/course-02-aggregation-temporality-and-views.md
+      - type: reading
+        title: "Readers, Export Interval, Cardinality And Exemplars"
+        path: sections/section-040/module-02/course-03-readers-export-interval-cardinality-and-exemplars.md
+      - type: reading
+        title: "Question"
+        path: sections/section-040/module-02/labs/lab-01/question.md
+      - type: lab
+        title: "Tune Metric Export, Temporality And Views"
+        path: sections/section-040/module-02/labs/lab-01
+        difficulty: intermediate
+        estimated_duration: 30m
+        topic: opentelemetry-metrics
+        task_kind: configure
+        tags: [opentelemetry, metrics, temporality, views, histogram, cardinality, otlp, collector]
+        learning_goals:
+          - Set the metric export interval and delta temporality with standard OTEL environment variables
+          - Write a View that removes a high-cardinality attribute and sets explicit histogram buckets
+          - Confirm the result in the Collector debug exporter log
+        resources:
+          - name: "OpenTelemetry Metrics SDK specification"
+            url: https://opentelemetry.io/docs/specs/otel/metrics/sdk/
+          - name: "OpenTelemetry Metrics API specification"
+            url: https://opentelemetry.io/docs/specs/otel/metrics/api/
+          - name: "OpenTelemetry Python metrics SDK"
+            url: https://opentelemetry-python.readthedocs.io/en/latest/sdk/metrics.html
+      - type: reading
+        title: "Summary"
+        path: sections/section-040/module-02/course-04-summary.md
+      - type: reading
+        title: "Logs: Records, The Logs SDK And Trace Correlation"
+        path: sections/section-040/module-03/course.md
+      - type: reading
+        title: "Log Records, Severity And Attributes"
+        path: sections/section-040/module-03/course-01-log-records-severity-and-attributes.md
+      - type: reading
+        title: "LoggerProvider, Processors And Exporters"
+        path: sections/section-040/module-03/course-02-logger-provider-processors-and-exporters.md
+      - type: reading
+        title: "Bridging Standard Logging And Trace Correlation"
+        path: sections/section-040/module-03/course-03-bridging-standard-logging-and-trace-correlation.md
+      - type: reading
+        title: "Events, Retention And Sensitive Data"
+        path: sections/section-040/module-03/course-04-events-retention-and-sensitive-data.md
+      - type: reading
+        title: "Question"
+        path: sections/section-040/module-03/labs/lab-01/question.md
+      - type: lab
+        title: "Repair A Logs Pipeline Lab"
+        path: sections/section-040/module-03/labs/lab-01
+        difficulty: intermediate
+        estimated_duration: 25m
+        topic: observability
+        task_kind: fix
+        tags: [opentelemetry, logs, resource, severity, trace-correlation, sensitive-data, collector]
+        learning_goals:
+          - Set the service name and a resource attribute so log records carry a service identity
+          - Reduce log volume with the level and remove sensitive attributes from log records
+          - Write error records inside a span so they carry a trace ID
+        resources:
+          - name: "OpenTelemetry Logs Data Model"
+            url: https://opentelemetry.io/docs/specs/otel/logs/data-model/
+          - name: "OpenTelemetry Python SDK documentation"
+            url: https://opentelemetry-python.readthedocs.io/
+      - type: reading
+        title: "Summary"
+        path: sections/section-040/module-03/course-05-summary.md
+
+      - type: reading
+        title: "Question"
+        path: sections/section-040/capstone/labs/lab-01/question.md
+      - type: lab
+        title: "Signals Capstone Lab"
+        path: sections/section-040/capstone/labs/lab-01
+        difficulty: advanced
+        estimated_duration: 40m
+        topic: observability
+        task_kind: fix
+        tags: [opentelemetry, traces, metrics, logs, sampler, resource, trace-correlation, collector]
+        learning_goals:
+          - Give logs, traces and metrics one shared Resource
+          - Find and fix a sampler that drops every trace and a metric export interval that is too long
+          - Join an error log record to its span by trace ID
+        resources:
+          - name: "OpenTelemetry Python instrumentation"
+            url: https://opentelemetry.io/docs/languages/python/instrumentation/
+          - name: "OpenTelemetry SDK environment variables"
+            url: https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/
+      - type: quiz
+        title: "Knowledge Check: Signals (Tracing, Metric, Log)"
+        path: sections/section-040/quiz.yaml
+        pass_score: 70
+  - id: module-050
+    title: "SDK Pipelines"
+    description: >
+      The trace, metric and log pipelines: providers, samplers, processors, readers, exporters, flush, shutdown and delivery limits.
+    content:
+      - type: reading
+        title: "Section Overview"
+        path: sections/section-050/README.md
+
+      - type: reading
+        title: "The Trace Pipeline"
+        path: sections/section-050/module-01/course.md
+      - type: reading
+        title: "Providers, Samplers And The Span Path"
+        path: sections/section-050/module-01/course-01-providers-samplers-and-the-span-path.md
+      - type: reading
+        title: "Span Processors And Exporters"
+        path: sections/section-050/module-01/course-02-span-processors-and-exporters.md
+      - type: reading
+        title: "Flush And Shutdown"
+        path: sections/section-050/module-01/course-03-flush-and-shutdown.md
+      - type: reading
+        title: "Question"
+        path: sections/section-050/module-01/labs/lab-01/question.md
+      - type: lab
+        title: "Fix A Trace Pipeline Lab"
+        path: sections/section-050/module-01/labs/lab-01
+        difficulty: intermediate
+        estimated_duration: 25m
+        topic: opentelemetry-sdk
+        task_kind: fix
+        tags: [opentelemetry, sdk, sampler, batch-span-processor, shutdown, otlp]
+        learning_goals:
+          - Set a parent-based ratio sampler with the standard OpenTelemetry environment variables
+          - Size the batching span processor queue, batch and schedule delay
+          - Make the pod flush spans on SIGTERM and give it a termination grace period that allows it
+        resources:
+          - name: "OpenTelemetry SDK specification"
+            url: https://opentelemetry.io/docs/specs/otel/trace/sdk/
+          - name: "SDK environment variables"
+            url: https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/
+      - type: reading
+        title: "Summary"
+        path: sections/section-050/module-01/course-04-summary.md
+
+      - type: reading
+        title: "Metric And Log Pipelines"
+        path: sections/section-050/module-02/course.md
+      - type: reading
+        title: "Meter Providers, Views And Aggregation"
+        path: sections/section-050/module-02/course-01-meter-providers-views-and-aggregation.md
+      - type: reading
+        title: "Metric Readers And Temporality"
+        path: sections/section-050/module-02/course-02-metric-readers-and-temporality.md
+      - type: reading
+        title: "Log Pipelines And Delivery Limits"
+        path: sections/section-050/module-02/course-03-log-pipelines-and-delivery-limits.md
+      - type: reading
+        title: "Question"
+        path: sections/section-050/module-02/labs/lab-01/question.md
+      - type: lab
+        title: "Fix Metric And Log Pipelines Lab"
+        path: sections/section-050/module-02/labs/lab-01
+        difficulty: intermediate
+        estimated_duration: 25m
+        topic: opentelemetry-sdk
+        task_kind: fix
+        tags: [opentelemetry, sdk, metrics, views, temporality, log-processor]
+        learning_goals:
+          - Set the periodic metric export interval and delta temporality
+          - Select the view settings that remove an attribute, set histogram buckets and drop a stream
+          - Size the batching log processor so that it starts and absorbs a short outage
+        resources:
+          - name: "OpenTelemetry metrics SDK specification"
+            url: https://opentelemetry.io/docs/specs/otel/metrics/sdk/
+          - name: "OpenTelemetry logs SDK specification"
+            url: https://opentelemetry.io/docs/specs/otel/logs/sdk/
+      - type: reading
+        title: "Summary"
+        path: sections/section-050/module-02/course-04-summary.md
+
+      - type: reading
+        title: "Question"
+        path: sections/section-050/capstone/labs/lab-01/question.md
+      - type: lab
+        title: "SDK Pipelines Capstone"
+        path: sections/section-050/capstone/labs/lab-01
+        difficulty: advanced
+        estimated_duration: 40m
+        topic: opentelemetry-sdk
+        task_kind: fix
+        tags: [opentelemetry, sdk, traces, metrics, logs, shutdown, otlp]
+        learning_goals:
+          - Find and fix the endpoint, sampler, processor, reader and shutdown faults of one service
+          - Confirm that traces, metrics and logs of the new pod reach the Collector
+          - Record the chosen sampler and export interval as evidence in a ConfigMap
+        resources:
+          - name: "OpenTelemetry SDK specification"
+            url: https://opentelemetry.io/docs/specs/otel/trace/sdk/
+          - name: "OTLP exporter configuration"
+            url: https://opentelemetry.io/docs/specs/otel/protocol/exporter/
+      - type: quiz
+        title: "Knowledge Check: SDK Pipelines"
+        path: sections/section-050/quiz.yaml
+        pass_score: 70
+  - id: module-060
+    title: "Context Propagation"
+    description: >
+      The context object, thread and asynchronous boundaries, W3C trace context, propagators, baggage and broken propagation.
+    content:
+      - type: reading
+        title: "Section Overview"
+        path: sections/section-060/README.md
+      - type: reading
+        title: "Context, Boundaries And W3C Trace Context"
+        path: sections/section-060/module-01/course.md
+      - type: reading
+        title: "The Context Object And The Active Context"
+        path: sections/section-060/module-01/course-01-the-context-object-and-the-active-context.md
+      - type: reading
+        title: "Keeping Context Across Threads And Asynchronous Work"
+        path: sections/section-060/module-01/course-02-keeping-context-across-threads-and-asynchronous-work.md
+      - type: reading
+        title: "The W3C traceparent And tracestate Headers"
+        path: sections/section-060/module-01/course-03-the-w3c-traceparent-and-tracestate-headers.md
+      - type: reading
+        title: "Question"
+        path: sections/section-060/module-01/labs/lab-01/question.md
+      - type: lab
+        title: "Attach Context To A Worker Thread And Read A traceparent"
+        path: sections/section-060/module-01/labs/lab-01
+        difficulty: intermediate
+        estimated_duration: 25m
+        topic: context-propagation
+        task_kind: fix
+        tags: [opentelemetry, context, traceparent, threads, python, collector]
+        learning_goals:
+          - Carry the active context into a worker thread so the spans share one trace
+          - Split a real traceparent header into version, trace ID, parent ID and flags
+          - Match the parent ID to the span that sent the request
+        resources:
+          - name: "OpenTelemetry Context API"
+            url: https://opentelemetry.io/docs/specs/otel/context/
+          - name: "W3C Trace Context"
+            url: https://www.w3.org/TR/trace-context/
+          - name: "OpenTelemetry Python context"
+            url: https://opentelemetry.io/docs/languages/python/propagation/
+      - type: reading
+        title: "Summary"
+        path: sections/section-060/module-01/course-04-summary.md
+      - type: reading
+        title: "Propagators, Baggage And Broken Propagation"
+        path: sections/section-060/module-02/course.md
+      - type: reading
+        title: "Propagators: Inject, Extract And OTEL_PROPAGATORS"
+        path: sections/section-060/module-02/course-01-propagators-inject-extract-and-otel-propagators.md
+      - type: reading
+        title: "Baggage And Its Security Limits"
+        path: sections/section-060/module-02/course-02-baggage-and-its-security-limits.md
+      - type: reading
+        title: "Diagnosing Broken Propagation"
+        path: sections/section-060/module-02/course-03-diagnosing-broken-propagation.md
+      - type: reading
+        title: "Question"
+        path: sections/section-060/module-02/labs/lab-01/question.md
+      - type: lab
+        title: "Fix Propagators And Remove A Secret From Baggage"
+        path: sections/section-060/module-02/labs/lab-01
+        difficulty: intermediate
+        estimated_duration: 25m
+        topic: context-propagation
+        task_kind: fix
+        tags: [opentelemetry, propagators, otel-propagators, baggage, security]
+        learning_goals:
+          - Fix a receiver that ignores the traceparent header with OTEL_PROPAGATORS
+          - Remove a credential from baggage and keep a safe key
+          - Record the propagators and baggage keys in use
+        resources:
+          - name: "OpenTelemetry propagators API"
+            url: https://opentelemetry.io/docs/specs/otel/context/api-propagators/
+          - name: "OpenTelemetry baggage API"
+            url: https://opentelemetry.io/docs/specs/otel/baggage/api/
+          - name: "SDK environment variables"
+            url: https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/
+      - type: reading
+        title: "Summary"
+        path: sections/section-060/module-02/course-04-summary.md
+      - type: reading
+        title: "Context Propagation Capstone Question"
+        path: sections/section-060/capstone/labs/lab-01/question.md
+      - type: lab
+        title: "Context Propagation Capstone: Repair A Two-Service Trace"
+        path: sections/section-060/capstone/labs/lab-01
+        difficulty: advanced
+        estimated_duration: 40m
+        topic: context-propagation
+        task_kind: fix
+        tags: [opentelemetry, propagation, baggage, threads, propagators, collector, capstone]
+        learning_goals:
+          - Repair propagators, thread context and baggage in a two-service trace
+          - Allow a single baggage key as a span attribute
+          - Prove one trace end to end in the service logs and the collector
+        resources:
+          - name: "OpenTelemetry propagators API"
+            url: https://opentelemetry.io/docs/specs/otel/context/api-propagators/
+          - name: "OpenTelemetry baggage API"
+            url: https://opentelemetry.io/docs/specs/otel/baggage/api/
+          - name: "W3C Trace Context"
+            url: https://www.w3.org/TR/trace-context/
+      - type: quiz
+        title: "Context Propagation Quiz"
+        path: sections/section-060/quiz.yaml
+        pass_score: 70
+  - id: module-070
+    title: "Agents"
+    description: >
+      Python zero-code instrumentation agents and the OpenTelemetry Collector in agent and gateway roles.
+    content:
+      - type: reading
+        title: "Agents"
+        path: sections/section-070/README.md
+
+      - type: reading
+        title: "Language Instrumentation Agents"
+        path: sections/section-070/module-01/course.md
+      - type: reading
+        title: "What An Instrumentation Agent Does"
+        path: sections/section-070/module-01/course-01-what-an-instrumentation-agent-does.md
+      - type: reading
+        title: "Configuring The Agent With Environment Variables"
+        path: sections/section-070/module-01/course-02-configuring-the-agent-with-environment-variables.md
+      - type: reading
+        title: "What The Agent Covers And What It Cannot"
+        path: sections/section-070/module-01/course-03-what-the-agent-covers-and-what-it-cannot.md
+      - type: reading
+        title: "Question"
+        path: sections/section-070/module-01/labs/lab-01/question.md
+      - type: lab
+        title: "Tune The Python Instrumentation Agent Lab"
+        path: sections/section-070/module-01/labs/lab-01
+        difficulty: intermediate
+        estimated_duration: 25m
+        topic: instrumentation
+        task_kind: fix
+        tags: [opentelemetry, python, auto-instrumentation, opentelemetry-instrument, environment-variables, collector]
+        learning_goals:
+          - Re-enable a disabled instrumentation of the Python agent through the environment
+          - Set the service name and resource attributes of a zero-code application
+          - Exclude health check URLs and confirm the result in the Collector log
+        resources:
+          - name: "Python zero-code instrumentation"
+            url: https://opentelemetry.io/docs/zero-code/python/
+          - name: "Python agent configuration"
+            url: https://opentelemetry.io/docs/zero-code/python/configuration/
+      - type: reading
+        title: "Summary"
+        path: sections/section-070/module-01/course-04-summary.md
+
+      - type: reading
+        title: "Collector Agent And Gateway Roles"
+        path: sections/section-070/module-02/course.md
+      - type: reading
+        title: "Agent And Gateway Roles"
+        path: sections/section-070/module-02/course-01-agent-and-gateway-roles.md
+      - type: reading
+        title: "Processors In The Agent"
+        path: sections/section-070/module-02/course-02-processors-in-the-agent.md
+      - type: reading
+        title: "Authority And Shared-Host Data Risks"
+        path: sections/section-070/module-02/course-03-authority-and-shared-host-data-risks.md
+      - type: reading
+        title: "Question"
+        path: sections/section-070/module-02/labs/lab-01/question.md
+      - type: lab
+        title: "Route Telemetry Through A Collector Agent Lab"
+        path: sections/section-070/module-02/labs/lab-01
+        difficulty: intermediate
+        estimated_duration: 30m
+        topic: collector
+        task_kind: configure
+        tags: [opentelemetry, collector, agent, gateway, daemonset, memory_limiter, resourcedetection, batch]
+        learning_goals:
+          - Send application telemetry to a Collector agent instead of the gateway
+          - Configure and order memory_limiter, resourcedetection and batch in the agent
+          - Restart the agent so the new configuration is used and verify enriched data at the gateway
+        resources:
+          - name: "Collector agent deployment pattern"
+            url: https://opentelemetry.io/docs/collector/deploy/agent/
+          - name: "memory_limiter processor"
+            url: https://github.com/open-telemetry/opentelemetry-collector/blob/main/processor/memorylimiterprocessor/README.md
+          - name: "resourcedetection processor"
+            url: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/processor/resourcedetectionprocessor/README.md
+      - type: reading
+        title: "Summary"
+        path: sections/section-070/module-02/course-04-summary.md
+
+      - type: reading
+        title: "Capstone Question"
+        path: sections/section-070/capstone/labs/lab-01/question.md
+      - type: lab
+        title: "Capstone: Agents End To End Lab"
+        path: sections/section-070/capstone/labs/lab-01
+        difficulty: advanced
+        estimated_duration: 40m
+        topic: agents
+        task_kind: configure
+        tags: [opentelemetry, auto-instrumentation, collector, agent, gateway, least-privilege]
+        learning_goals:
+          - Configure a zero-code Python application and a Collector agent that forwards to a gateway
+          - Order the agent processors and verify enriched telemetry at the gateway
+          - Remove host access that the agent does not need
+        resources:
+          - name: "Python zero-code instrumentation"
+            url: https://opentelemetry.io/docs/zero-code/python/
+          - name: "Collector agent deployment pattern"
+            url: https://opentelemetry.io/docs/collector/deploy/agent/
+      - type: quiz
+        title: "Agents Quiz"
+        path: sections/section-070/quiz.yaml
+        pass_score: 70
+      - type: quiz
+        title: "Final Knowledge Check: The OpenTelemetry API and SDK"
+        path: sections/final-domain-quiz.yaml
+        pass_score: 70

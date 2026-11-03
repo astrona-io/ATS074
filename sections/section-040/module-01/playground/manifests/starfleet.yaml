@@ -1,0 +1,176 @@
+# Tracing playground: the `shuttle` application creates spans with the real
+# OpenTelemetry Python SDK and exports them over OTLP/HTTP to the
+# OpenTelemetry Collector, whose `debug` exporter prints every span to its
+# log. Read the spans with `kubectl -n starfleet logs deploy/collector`.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: starfleet
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: collector-config
+  namespace: starfleet
+data:
+  collector.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    exporters:
+      debug:
+        verbosity: detailed
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          exporters: [debug]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: collector
+  namespace: starfleet
+  labels:
+    app: collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: collector
+  template:
+    metadata:
+      labels:
+        app: collector
+    spec:
+      containers:
+        - name: collector
+          image: otel/opentelemetry-collector-contrib:0.164.0
+          args: ["--config=/conf/collector.yaml"]
+          ports:
+            - name: otlp-grpc
+              containerPort: 4317
+            - name: otlp-http
+              containerPort: 4318
+          volumeMounts:
+            - name: config
+              mountPath: /conf
+      volumes:
+        - name: config
+          configMap:
+            name: collector-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: collector
+  namespace: starfleet
+spec:
+  selector:
+    app: collector
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shuttle-app
+  namespace: starfleet
+data:
+  app.py: |
+    import time
+
+    from opentelemetry import trace
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    from opentelemetry.trace import Link, SpanKind, Status, StatusCode
+
+    # The provider reads OTEL_SERVICE_NAME, OTEL_RESOURCE_ATTRIBUTES and
+    # OTEL_TRACES_SAMPLER from the environment. The exporter reads
+    # OTEL_EXPORTER_OTLP_ENDPOINT. The batch processor reads OTEL_BSP_*.
+    provider = TracerProvider()
+    provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+    trace.set_tracer_provider(provider)
+
+    tracer = trace.get_tracer("starfleet.shuttle", "1.0.0")
+
+    previous = None
+    count = 0
+    while True:
+        count += 1
+        links = [Link(previous)] if previous else []
+        with tracer.start_as_current_span(
+            "dock",
+            kind=SpanKind.SERVER,
+            attributes={"shuttle.dock.number": count % 4},
+            links=links,
+        ) as dock:
+            previous = dock.get_span_context()
+            dock.add_event("clearance.granted", {"clearance.level": 2})
+            with tracer.start_as_current_span("scan") as scan:
+                scan.set_attribute("scan.objects", 3)
+                time.sleep(0.2)
+            try:
+                with tracer.start_as_current_span("report", kind=SpanKind.CLIENT):
+                    time.sleep(0.1)
+                    if count % 3 == 0:
+                        raise RuntimeError("report link down")
+            except RuntimeError:
+                dock.set_status(Status(StatusCode.ERROR, "report failed"))
+        print("trace", count, "finished", flush=True)
+        time.sleep(5)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shuttle
+  namespace: starfleet
+  labels:
+    app: shuttle
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shuttle
+  template:
+    metadata:
+      labels:
+        app: shuttle
+    spec:
+      containers:
+        - name: shuttle
+          image: python:3.12-slim
+          command:
+            - sh
+            - -c
+            - pip install --quiet --no-cache-dir opentelemetry-sdk==1.45.2 opentelemetry-exporter-otlp-proto-http==1.45.2 && python /app/app.py
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: shuttle
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: service.version=1.0.0,deployment.environment.name=playground
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://collector.starfleet.svc.cluster.local:4318
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: http/protobuf
+            - name: OTEL_TRACES_SAMPLER
+              value: parentbased_always_on
+            - name: OTEL_BSP_SCHEDULE_DELAY
+              value: "2000"
+          volumeMounts:
+            - name: app
+              mountPath: /app
+      volumes:
+        - name: app
+          configMap:
+            name: shuttle-app

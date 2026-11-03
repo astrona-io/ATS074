@@ -1,0 +1,69 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Data Model Capstone (LAB). Graded against the live cluster. Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-capstone-010
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+# Starting state: the Collector and the shuttle service. The shuttle has no service name, a per-request resource attribute, cumulative metrics and no exemplars.
+bootstrap:
+  init:
+    - name: seed-cluster
+      description: Create the Collector and the shuttle service
+      type: file
+      source: bootstrap/01-seed-cluster.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
+    - name: wait-for-settled
+      description: Wait until the shuttle rollout is complete
+      type: file
+      source: testing/wait-for-settled.sh
+
+validation:
+  scripts:
+    - name: service-identity
+      description: The resource names shuttle, starfleet, 1.0.0 and training without request.id
+      type: file
+      source: validation/validate-service-identity.sh
+      hint: Fix OTEL_SERVICE_NAME and OTEL_RESOURCE_ATTRIBUTES. A per-request value does not belong on the resource.
+    - name: metrics-configured
+      description: Delta temporality and a filter that allows exemplars are configured
+      type: file
+      source: validation/validate-metrics-configured.sh
+      hint: Use two environment variables, OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE and OTEL_METRICS_EXEMPLAR_FILTER.
+    - name: collector-all-signals
+      description: The Collector receives resource, delta sum, exemplars and correlated logs
+      type: file
+      source: validation/validate-collector-all-signals.sh
+      hint: The check reads the Collector log of the last 40 seconds, so the rollout must be complete. A log record inside a span carries a trace ID.
+    - name: data-model-record
+      description: The ConfigMap data-model-record states the identity, the temporality and the unit of shuttle.request.duration
+      type: file
+      source: validation/validate-data-model-record.sh
+      hint: Create ConfigMap data-model-record in starfleet with keys service-identity, temporality and duration-unit. Read the values from the Collector log.
+    - name: workloads-running
+      description: The Collector and the shuttle are available with their original images
+      type: file
+      source: validation/validate-workloads-running.sh
+      hint: Change environment variables and add the ConfigMap only. Do not delete or replace the Deployments.
+
+teardown:
+  keepCluster: false

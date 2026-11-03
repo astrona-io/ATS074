@@ -1,0 +1,13 @@
+# Reference patch: read the OTLP headers from the Secret collector-auth.
+spec:
+  template:
+    spec:
+      containers:
+        - name: shuttle
+          env:
+            - name: OTEL_EXPORTER_OTLP_HEADERS
+              value: null
+              valueFrom:
+                secretKeyRef:
+                  name: collector-auth
+                  key: otlp-headers

@@ -1,0 +1,334 @@
+# Generated for the Context Propagation section. Starting state of the environment: built untested.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: starfleet
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: collector-config
+  namespace: starfleet
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    exporters:
+      debug:
+        verbosity: detailed
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          exporters: [debug]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: collector
+  namespace: starfleet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: collector
+  template:
+    metadata:
+      labels:
+        app: collector
+    spec:
+      containers:
+        - name: collector
+          image: otel/opentelemetry-collector-contrib:0.164.0
+          args: ["--config=/conf/config.yaml"]
+          ports:
+            - containerPort: 4317
+            - containerPort: 4318
+          volumeMounts:
+            - name: config
+              mountPath: /conf
+      volumes:
+        - name: config
+          configMap:
+            name: collector-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: collector
+  namespace: starfleet
+spec:
+  selector:
+    app: collector
+  ports:
+    - name: otlp-grpc
+      port: 4317
+    - name: otlp-http
+      port: 4318
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: probe-app
+  namespace: starfleet
+data:
+  app.py: |
+    import os
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    from opentelemetry import baggage, propagate, trace
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    from opentelemetry.trace import SpanKind
+
+    provider = TracerProvider(resource=Resource.create({}))
+    provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+    trace.set_tracer_provider(provider)
+    tracer = trace.get_tracer("probe")
+
+    ALLOWED = [k.strip() for k in os.environ.get("PROBE_BAGGAGE_ATTRIBUTES", "").split(",") if k.strip()]
+
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            carrier = {key.lower(): value for key, value in self.headers.items()}
+            ctx = propagate.extract(carrier)
+            with tracer.start_as_current_span("probe.scan", context=ctx, kind=SpanKind.SERVER) as span:
+                received = baggage.get_all(ctx)
+                for key in ALLOWED:
+                    if key in received:
+                        span.set_attribute("baggage." + key, str(received[key]))
+                span_context = span.get_span_context()
+                parent = span.parent
+                print(
+                    "PROPAGATION role=server span=%s trace_id=%s span_id=%s parent_span_id=%s remote=%s traceparent=%s baggage=%s"
+                    % (
+                        span.name,
+                        format(span_context.trace_id, "032x"),
+                        format(span_context.span_id, "016x"),
+                        format(parent.span_id, "016x") if parent else "none",
+                        "true" if parent and parent.is_remote else "false",
+                        carrier.get("traceparent", "none"),
+                        ";".join("%s=%s" % (k, v) for k, v in received.items()) or "none",
+                    ),
+                    flush=True,
+                )
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"ok\n")
+
+        def log_message(self, *args):
+            pass
+
+
+    print("probe: started, OTEL_PROPAGATORS=%s" % os.environ.get("OTEL_PROPAGATORS", "(default)"), flush=True)
+    HTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shuttle-app
+  namespace: starfleet
+data:
+  app.py: |
+    import os
+    import threading
+    import time
+    import urllib.request
+
+    from opentelemetry import baggage, context, propagate, trace
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    from opentelemetry.trace import SpanKind
+
+    provider = TracerProvider(resource=Resource.create({}))
+    provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+    trace.set_tracer_provider(provider)
+    tracer = trace.get_tracer("shuttle")
+
+    TARGET = os.environ.get("PROBE_URL", "http://probe:8080/scan")
+    ATTACH = os.environ.get("SHUTTLE_ATTACH_CONTEXT", "false").lower() == "true"
+    BAGGAGE = os.environ.get("SHUTTLE_BAGGAGE", "")
+    INTERVAL = float(os.environ.get("SHUTTLE_INTERVAL_SECONDS", "5"))
+
+
+    def log_span(role, span, extra=""):
+        span_context = span.get_span_context()
+        parent = span.parent.span_id if span.parent else None
+        print(
+            "PROPAGATION role=%s span=%s trace_id=%s span_id=%s parent_span_id=%s %s"
+            % (
+                role,
+                span.name,
+                format(span_context.trace_id, "032x"),
+                format(span_context.span_id, "016x"),
+                format(parent, "016x") if parent else "none",
+                extra,
+            ),
+            flush=True,
+        )
+
+
+    def audit(parent_context):
+        # A new thread starts with an empty context. Attach the captured one only
+        # when SHUTTLE_ATTACH_CONTEXT is true.
+        token = context.attach(parent_context) if ATTACH else None
+        try:
+            with tracer.start_as_current_span("shuttle.audit") as span:
+                log_span("worker", span)
+        finally:
+            if token is not None:
+                context.detach(token)
+
+
+    def dispatch():
+        with tracer.start_as_current_span("shuttle.dispatch", kind=SpanKind.CLIENT) as span:
+            ctx = context.get_current()
+            for pair in BAGGAGE.split(","):
+                if "=" in pair:
+                    key, value = pair.split("=", 1)
+                    ctx = baggage.set_baggage(key.strip(), value.strip(), ctx)
+            token = context.attach(ctx)
+            try:
+                headers = {}
+                propagate.inject(headers)
+                log_span(
+                    "client",
+                    span,
+                    "traceparent=%s baggage=%s"
+                    % (headers.get("traceparent", "none"), headers.get("baggage", "none")),
+                )
+                worker = threading.Thread(target=audit, args=(context.get_current(),))
+                worker.start()
+                try:
+                    request = urllib.request.Request(TARGET, headers=headers)
+                    with urllib.request.urlopen(request, timeout=5) as response:
+                        span.set_attribute("http.response.status_code", response.status)
+                except Exception as error:
+                    span.record_exception(error)
+                    print("shuttle: request failed: %s" % error, flush=True)
+                worker.join()
+            finally:
+                context.detach(token)
+
+
+    print("shuttle: started, OTEL_PROPAGATORS=%s" % os.environ.get("OTEL_PROPAGATORS", "(default)"), flush=True)
+    while True:
+        dispatch()
+        time.sleep(INTERVAL)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: probe
+  namespace: starfleet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: probe
+  template:
+    metadata:
+      labels:
+        app: probe
+    spec:
+      containers:
+        - name: probe
+          image: python:3.12-slim
+          command: ["sh", "-c", "pip install --quiet --no-cache-dir opentelemetry-sdk==1.45.2 opentelemetry-exporter-otlp-proto-http==1.45.2 && python /app/app.py"]
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 5
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: "probe"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "deployment.environment.name=training"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://collector:4318"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
+            - name: OTEL_BSP_SCHEDULE_DELAY
+              value: "2000"
+            - name: PROBE_BAGGAGE_ATTRIBUTES
+              value: ""
+            - name: OTEL_PROPAGATORS
+              value: "baggage"
+          volumeMounts:
+            - name: app
+              mountPath: /app
+      volumes:
+        - name: app
+          configMap:
+            name: probe-app
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: probe
+  namespace: starfleet
+spec:
+  selector:
+    app: probe
+  ports:
+    - name: http
+      port: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shuttle
+  namespace: starfleet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shuttle
+  template:
+    metadata:
+      labels:
+        app: shuttle
+    spec:
+      containers:
+        - name: shuttle
+          image: python:3.12-slim
+          command: ["sh", "-c", "pip install --quiet --no-cache-dir opentelemetry-sdk==1.45.2 opentelemetry-exporter-otlp-proto-http==1.45.2 && python /app/app.py"]
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: "shuttle"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "deployment.environment.name=training"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://collector:4318"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
+            - name: OTEL_BSP_SCHEDULE_DELAY
+              value: "2000"
+            - name: SHUTTLE_ATTACH_CONTEXT
+              value: "false"
+            - name: SHUTTLE_BAGGAGE
+              value: "mission=survey,session-token=demo-not-a-real-secret"
+            - name: OTEL_PROPAGATORS
+              value: "baggage"
+          volumeMounts:
+            - name: app
+              mountPath: /app
+      volumes:
+        - name: app
+          configMap:
+            name: shuttle-app

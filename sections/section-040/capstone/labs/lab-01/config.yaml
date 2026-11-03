@@ -1,0 +1,79 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Signals Capstone: Correlate Traces, Metrics And Logs (LAB). Graded against the
+# live cluster. Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-capstone-040
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+# Starting state: the collector, and a shuttle whose three signals all have a
+# problem: no service name, the trace sampler drops every trace, the metric
+# export interval is one hour, and the log settings are wrong (DEBUG level,
+# payload logging, error record written after the span). The failures are left
+# in place on purpose.
+bootstrap:
+  init:
+    - name: seed-cluster
+      description: Create the collector and the shuttle with failing settings for traces, metrics and logs
+      type: file
+      source: bootstrap/01-seed-cluster.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
+    - name: wait-for-settled
+      description: Wait until the old shuttle pod is gone
+      type: file
+      source: testing/wait-for-settled.sh
+
+validation:
+  scripts:
+    - name: workloads-running
+      description: collector and shuttle are available with their original images and code
+      type: file
+      source: validation/validate-workloads-running.sh
+      hint: Fix the settings. Do not delete, scale down or replace the Deployments, and do not rewrite the application code.
+    - name: resource-shared
+      description: Logs, traces and metrics all arrive with service.name shuttle and deployment.environment.name training
+      type: file
+      source: validation/validate-resource-shared.sh
+      hint: One Resource feeds all three providers. Set OTEL_SERVICE_NAME and OTEL_RESOURCE_ATTRIBUTES once on the Deployment.
+    - name: traces-exported
+      description: Spans named dispatch reach the collector
+      type: file
+      source: validation/validate-traces-exported.sh
+      hint: Read the sampler settings in the environment. A sampler that drops every trace exports nothing.
+    - name: metrics-exported
+      description: The counter shuttle.dispatch.count reaches the collector within 40 seconds
+      type: file
+      source: validation/validate-metrics-exported.sh
+      hint: The periodic metric reader exports once per interval. OTEL_METRIC_EXPORT_INTERVAL is in milliseconds.
+    - name: logs-hygiene
+      description: Log records arrive without DEBUG severity and without sensitive attributes
+      type: file
+      source: validation/validate-logs-hygiene.sh
+      hint: The level and the payload switch are application settings named SHUTTLE_LOG_LEVEL and SHUTTLE_LOG_PAYLOAD.
+    - name: log-trace-correlation
+      description: Every ERROR record carries the trace ID of a span the collector received
+      type: file
+      source: validation/validate-log-trace-correlation.sh
+      hint: Two things must be true. The record is written while the span is current, and the sampler keeps the span so the trace exists.
+
+teardown:
+  keepCluster: false

@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Metrics With The OpenTelemetry SDK (PLAYGROUND) - playground environment.
+# A clean sandbox: it starts the `starfleet` namespace with a Collector that
+# prints every signal and a `shuttle` program that records metrics with the
+# real OpenTelemetry Python SDK, then stays running for free exploration.
+# No task, no grading. Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-playground-040-02
+  docs:
+    guide: docs/overview.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+# What the learner starts with: the Collector, the `shuttle` program (the
+# first start installs the SDK with pip, which takes about a minute) and an
+# empty views file.
+bootstrap:
+  manifests:
+    - name: metrics-app
+      type: file
+      source: manifests/metrics-app.yaml
+  waitFor:
+    - resource: deploy/collector
+      namespace: starfleet
+    - resource: deploy/shuttle
+      namespace: starfleet
+
+teardown:
+  keepCluster: false

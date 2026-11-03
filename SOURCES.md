@@ -28,4 +28,4 @@
 - [Trace Context standard](https://www.w3.org/TR/trace-context/)
 - [Service-level objectives](https://sre.google/sre-book/service-level-objectives/)
 
-Version-specific fields and options need confirmation against the intended deployed release before adding executable material. Configuration excerpts illustrate intent and do not claim installation or runtime results. Question banks are independently authored practice, not official examination items.
+Version-specific fields and options (SDK 1.45.2, Collector 0.164.0) need confirmation against the deployed release. Labs and playgrounds are untested. Quiz banks are independently authored practice, not official examination items.

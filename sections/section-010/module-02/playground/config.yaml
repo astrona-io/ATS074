@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Attributes, Metric Points And Exemplars (PLAYGROUND) - playground environment.
+# A clean sandbox: an OpenTelemetry Collector that prints what it receives and
+# the shuttle service built on the OpenTelemetry Python SDK. No task, no
+# grading, no `astrona submit`. Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-playground-010-02
+  docs:
+    guide: docs/overview.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+# The shuttle service sends cumulative metrics and an exemplar filter set to always_off, so no data point carries an exemplar.
+bootstrap:
+  manifests:
+    - name: starfleet
+      type: file
+      source: manifests/starfleet.yaml
+  waitFor:
+    - resource: deploy/collector
+      namespace: starfleet
+      timeout: 300s
+    - resource: deploy/shuttle
+      namespace: starfleet
+      timeout: 300s
+
+teardown:
+  keepCluster: false

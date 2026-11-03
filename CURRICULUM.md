@@ -6,22 +6,22 @@ The [official objectives](https://training.linuxfoundation.org/certification/ope
 
 | Section | Official objective | Modules |
 | --- | --- | --- |
-| 010 | Data Model | 1 |
-| 020 | Composability and Extension | 1 |
-| 030 | Configuration | 1 |
-| 040 | Signals (Tracing, Metric, Log) | 1 |
-| 050 | SDK Pipelines | 1 |
-| 060 | Context Propagation | 1 |
-| 070 | Agents | 1 |
+| 010 | Data Model | 2 |
+| 020 | Composability and Extension | 2 |
+| 030 | Configuration | 2 |
+| 040 | Signals (Tracing, Metric, Log) | 3 |
+| 050 | SDK Pipelines | 2 |
+| 060 | Context Propagation | 2 |
+| 070 | Agents | 2 |
 
-| Section / module | Module | Teaching files |
-| --- | --- | --- |
-| 010 / 01 | Resources, Instrumentation Scope And Signal Envelopes | Resources, Instrumentation Scope And Signal Envelopes |
-| 020 / 01 | API Independence, SDK Components And Extension Contracts | API Independence, SDK Components And Extension Contracts |
-| 030 / 01 | SDK Initialization, Resource Settings And Export Configuration | SDK Initialization, Resource Settings And Export Configuration |
-| 040 / 01 | Tracing Requests Through Spans And Context | Tracing Requests Through Spans And Context; Counters, Gauges And Distribution Measurements; Logs And Events As Evidence Beside Metrics |
-| 050 / 01 | Signal Providers, Processing, Readers And Shutdown | Signal Providers, Processing, Readers And Shutdown |
-| 060 / 01 | Active Context, Injection, Extraction And Baggage | Active Context, Injection, Extraction And Baggage |
-| 070 / 01 | Instrumentation Agents And Local Collection Roles | Instrumentation Agents And Local Collection Roles |
+| Section | Title | Modules | Labs |
+| --- | --- | --- | --- |
+| 010 | Data Model | Resources, Instrumentation Scope And Signal Identity; Attributes, Metric Points And Exemplars | 3 (incl. capstone) |
+| 020 | Composability and Extension | API And SDK Separation; SDK Components And Extension Contracts | 3 (incl. capstone) |
+| 030 | Configuration | SDK Initialization, Environment Variables And Resources; Exporter, Sampler And Declarative Configuration | 3 (incl. capstone) |
+| 040 | Signals (Tracing, Metric, Log) | Tracing With The OpenTelemetry API And SDK; Metrics With The OpenTelemetry SDK; Logs: Records, The Logs SDK And Trace Correlation | 4 (incl. capstone) |
+| 050 | SDK Pipelines | The Trace Pipeline; Metric And Log Pipelines | 3 (incl. capstone) |
+| 060 | Context Propagation | Context, Boundaries And W3C Trace Context; Propagators, Baggage And Broken Propagation | 3 (incl. capstone) |
+| 070 | Agents | Language Instrumentation Agents; Collector Agent And Gateway Roles | 3 (incl. capstone) |
 
-AUTHORING.yaml records measurable goals and adaptation sources. Every objective retains its section ID. All technical readings remain draft. Question banks are separate from the reading manifest and follow their declared summaries. No labs, playgrounds or runtime validation are included.
+AUTHORING.yaml records measurable goals and adaptation sources. Every objective retains its section ID. All technical readings remain draft. Each section has a `quiz.yaml` and a capstone lab, and `sections/final-domain-quiz.yaml` closes the course. Labs and playgrounds are built untested; only static checks were run.

@@ -1,0 +1,80 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Context Propagation Capstone: Repair A Two-Service Trace (LAB). Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-capstone-060
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+# Starting state: collector, probe and shuttle in starfleet. The pods install the
+# OpenTelemetry Python SDK at start, so they need up to a few minutes.
+bootstrap:
+  init:
+    - name: seed-cluster
+      description: Create the collector, the probe and the shuttle and wait until they run
+      type: file
+      source: bootstrap/01-seed-cluster.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
+    - name: wait-for-settled
+      description: Wait until the old pods are gone
+      type: file
+      source: testing/wait-for-settled.sh
+
+validation:
+  scripts:
+    - name: workloads-running
+      description: collector, probe and shuttle are still available with their original images
+      type: file
+      source: validation/validate-workloads-running.sh
+      hint: Fix the settings with kubectl set env. Do not delete, scale down or replace the Deployments.
+    - name: propagators-configured
+      description: shuttle and probe both set OTEL_PROPAGATORS=tracecontext,baggage
+      type: file
+      source: validation/validate-propagators-configured.sh
+      hint: Set OTEL_PROPAGATORS to tracecontext,baggage on both the shuttle and the probe Deployments.
+    - name: trace-continued
+      description: probe.scan spans have a remote parent from the shuttle
+      type: file
+      source: validation/validate-trace-continued.sh
+      hint: Look at the PROPAGATION lines of the probe. A line with remote=false means the probe did not extract the traceparent header.
+    - name: context-attached
+      description: Worker thread spans in the shuttle join the dispatch trace
+      type: file
+      source: validation/validate-context-attached.sh
+      hint: The shuttle reads SHUTTLE_ATTACH_CONTEXT. Set it to true on the shuttle Deployment and wait for the new pod.
+    - name: secret-removed
+      description: The session-token baggage entry is removed and mission still reaches the probe
+      type: file
+      source: validation/validate-secret-removed.sh
+      hint: Keep mission=survey and remove the session-token entry from SHUTTLE_BAGGAGE on the shuttle Deployment.
+    - name: baggage-attribute-allowlist
+      description: Only the mission baggage key is copied to a span attribute
+      type: file
+      source: validation/validate-baggage-attribute-allowlist.sh
+      hint: The probe copies only the baggage keys named in PROBE_BAGGAGE_ATTRIBUTES onto its span.
+    - name: propagation-report
+      description: propagation-report names a trace seen in shuttle, probe and collector logs
+      type: file
+      source: validation/validate-propagation-report.sh
+      hint: Pick a trace ID from a probe PROPAGATION line with remote=true. Wait until the same trace ID also has a shuttle worker line with a parent.
+
+teardown:
+  keepCluster: false

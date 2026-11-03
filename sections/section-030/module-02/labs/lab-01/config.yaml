@@ -1,0 +1,60 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Repair The Exporter, Sampler And Interval Settings (LAB). Graded against the
+# live cluster: Deployment environment and Collector log. Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-lab-030-02
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+# Starting state: the shuttle service runs but no span and no metric arrives.
+bootstrap:
+  init:
+    - name: seed-cluster
+      description: Start the collector and the misconfigured shuttle service
+      type: file
+      source: bootstrap/01-seed-cluster.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
+    - name: wait-for-settled
+      description: Wait for fresh spans and metrics
+      type: file
+      source: testing/wait-for-settled.sh
+
+validation:
+  scripts:
+    - name: traces-delivered
+      description: The Collector receives fresh dock spans from shuttle
+      type: file
+      source: validation/validate-traces-delivered.sh
+      hint: The HTTP exporter needs the HTTP port of the Collector, and a sampler that always_off records nothing.
+    - name: metrics-delivered
+      description: The Collector receives fresh shuttle.docks metrics
+      type: file
+      source: validation/validate-metrics-delivered.sh
+      hint: The metric reader exports on a timer in milliseconds. The default is 60000 and the lab expects an interval of at most 10000.
+    - name: sampler-configuration
+      description: The sampler is parentbased_traceidratio with the argument 0.5 and the endpoint uses port 4318
+      type: file
+      source: validation/validate-sampler-configuration.sh
+      hint: Set OTEL_TRACES_SAMPLER=parentbased_traceidratio and OTEL_TRACES_SAMPLER_ARG=0.5 on the Deployment.
+
+teardown:
+  keepCluster: false

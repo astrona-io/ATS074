@@ -1,0 +1,71 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Fix A Trace Pipeline (LAB). Graded against the live cluster. Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-lab-050-01
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+# Starting state: the Collector and the shuttle service. The shuttle uses
+# the always_off sampler, the simple span processor, exits on SIGTERM without
+# flushing and has a one second termination grace period.
+bootstrap:
+  init:
+    - name: seed-cluster
+      description: Start the Collector and the shuttle service with a trace pipeline that exports no spans
+      type: file
+      source: bootstrap/01-seed-cluster.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
+    - name: wait-for-settled
+      description: Wait until the new shuttle pod is ready and has exported for a while
+      type: file
+      source: testing/wait-for-settled.sh
+
+validation:
+  scripts:
+    - name: workloads-running
+      description: collector and shuttle are available with their original image and script
+      type: file
+      source: validation/validate-workloads-running.sh
+      hint: Change only the environment and the grace period of the shuttle Deployment. A new pod needs a few minutes to install the SDK.
+    - name: sampler-ratio
+      description: shuttle samples with parentbased_traceidratio at 0.5
+      type: file
+      source: validation/validate-sampler.sh
+      hint: Set OTEL_TRACES_SAMPLER to parentbased_traceidratio and OTEL_TRACES_SAMPLER_ARG to 0.5 on the Deployment. The check reads the running pod.
+    - name: batch-processor
+      description: shuttle uses the batching span processor with a 4096 queue
+      type: file
+      source: validation/validate-batch-processor.sh
+      hint: Set SHUTTLE_SPAN_PROCESSOR=batch, OTEL_BSP_MAX_QUEUE_SIZE=4096, OTEL_BSP_MAX_EXPORT_BATCH_SIZE=256 and OTEL_BSP_SCHEDULE_DELAY=2000. The batch size cannot be larger than the queue size.
+    - name: shutdown-path
+      description: shuttle shuts down its providers on SIGTERM and has a 30 second grace period
+      type: file
+      source: validation/validate-shutdown-path.sh
+      hint: Set SHUTTLE_ON_TERM=shutdown and spec.template.spec.terminationGracePeriodSeconds to 30.
+    - name: spans-exported
+      description: The Collector received spans from the current shuttle pod
+      type: file
+      source: validation/validate-spans-exported.sh
+      hint: Read the Collector log with kubectl -n starfleet logs deployment/collector and look for shuttle.dock spans. Wait for the new pod to finish pip install.
+
+teardown:
+  keepCluster: false

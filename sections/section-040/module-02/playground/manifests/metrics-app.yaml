@@ -1,0 +1,245 @@
+# The example application for the metrics module: the `shuttle` Deployment
+# runs a small Python program that uses the real OpenTelemetry SDK and sends
+# OTLP/HTTP to the `collector`, which prints everything it receives.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: starfleet
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: collector-config
+  namespace: starfleet
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    exporters:
+      debug:
+        verbosity: detailed
+    service:
+      pipelines:
+        metrics:
+          receivers: [otlp]
+          exporters: [debug]
+        traces:
+          receivers: [otlp]
+          exporters: [debug]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: collector
+  namespace: starfleet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: collector
+  template:
+    metadata:
+      labels:
+        app: collector
+    spec:
+      containers:
+        - name: collector
+          image: otel/opentelemetry-collector-contrib:0.164.0
+          args: ["--config=/etc/otelcol/config.yaml"]
+          ports:
+            - containerPort: 4317
+            - containerPort: 4318
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otelcol
+      volumes:
+        - name: config
+          configMap:
+            name: collector-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: collector
+  namespace: starfleet
+spec:
+  selector:
+    app: collector
+  ports:
+    - name: otlp-grpc
+      port: 4317
+    - name: otlp-http
+      port: 4318
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shuttle-views
+  namespace: starfleet
+data:
+  views.py: |
+    # Views change how the SDK aggregates an instrument before export.
+    # The shuttle program imports VIEWS once, at start-up, and passes the list
+    # to the MeterProvider. An empty list means every instrument uses its
+    # default aggregation and keeps every attribute.
+    VIEWS = []
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shuttle-app
+  namespace: starfleet
+data:
+  app.py: |
+    import random
+    import sys
+    import time
+    import uuid
+
+    sys.path.insert(0, "/views")
+
+    from opentelemetry import metrics, trace
+    from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.metrics import CallbackOptions, Observation
+    from opentelemetry.sdk.metrics import MeterProvider
+    from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+    from views import VIEWS
+
+    # Resource.create() reads OTEL_SERVICE_NAME and OTEL_RESOURCE_ATTRIBUTES.
+    resource = Resource.create({})
+
+    # The exporter reads OTEL_EXPORTER_OTLP_* (endpoint, protocol, temporality)
+    # and the reader reads OTEL_METRIC_EXPORT_INTERVAL.
+    reader = PeriodicExportingMetricReader(OTLPMetricExporter())
+    metrics.set_meter_provider(
+        MeterProvider(resource=resource, metric_readers=[reader], views=VIEWS)
+    )
+
+    tracer_provider = TracerProvider(resource=resource)
+    tracer_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+    trace.set_tracer_provider(tracer_provider)
+
+    meter = metrics.get_meter("shuttle", "1.0.0")
+    tracer = trace.get_tracer("shuttle", "1.0.0")
+
+
+    def read_temperature(options: CallbackOptions):
+        yield Observation(random.uniform(60.0, 90.0), {"engine": "main"})
+
+
+    def read_cpu_time(options: CallbackOptions):
+        yield Observation(time.process_time())
+
+
+    requests = meter.create_counter(
+        "shuttle.requests", unit="{request}", description="Completed requests"
+    )
+    queue_depth = meter.create_up_down_counter(
+        "shuttle.queue.depth", unit="{request}", description="Requests waiting"
+    )
+    duration = meter.create_histogram(
+        "shuttle.request.duration", unit="s", description="Request duration"
+    )
+    fuel = meter.create_gauge(
+        "shuttle.fuel.level", unit="%", description="Current fuel level"
+    )
+    meter.create_observable_gauge(
+        "shuttle.engine.temperature",
+        callbacks=[read_temperature],
+        unit="Cel",
+        description="Engine temperature",
+    )
+    meter.create_observable_counter(
+        "shuttle.cpu.time",
+        callbacks=[read_cpu_time],
+        unit="s",
+        description="CPU time used by the process",
+    )
+
+    routes = ["/dock", "/launch", "/scan"]
+    depth = 0
+    fuel_level = 100.0
+
+    print("shuttle: metrics loop started", flush=True)
+    while True:
+        route = random.choice(routes)
+        with tracer.start_as_current_span("handle " + route):
+            started = time.monotonic()
+            time.sleep(random.uniform(0.005, 0.4))
+            status = 500 if random.random() < 0.1 else 200
+            elapsed = time.monotonic() - started
+
+            base = {"http.route": route, "http.response.status_code": status}
+            requests.add(1, base)
+            duration.record(elapsed, {**base, "request.id": uuid.uuid4().hex})
+
+        step = random.choice([1, 1, -1])
+        if depth + step >= 0:
+            depth += step
+            queue_depth.add(step)
+
+        fuel_level = fuel_level - random.uniform(0.0, 0.5)
+        if fuel_level < 10.0:
+            fuel_level = 100.0
+        fuel.set(fuel_level)
+---
+# The shuttle Deployment. Settings come only from OTEL_* environment variables.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shuttle
+  namespace: starfleet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shuttle
+  template:
+    metadata:
+      labels:
+        app: shuttle
+    spec:
+      containers:
+        - name: shuttle
+          image: python:3.12-slim
+          command:
+            - sh
+            - -c
+            - "pip install --quiet --no-cache-dir opentelemetry-sdk==1.45.2 opentelemetry-exporter-otlp-proto-http==1.45.2 && python /app/app.py"
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: shuttle
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: deployment.environment.name=training
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://collector:4318
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: http/protobuf
+            - name: OTEL_METRIC_EXPORT_INTERVAL
+              value: "10000"
+            - name: OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE
+              value: cumulative
+            - name: OTEL_TRACES_SAMPLER
+              value: parentbased_always_on
+          volumeMounts:
+            - name: app
+              mountPath: /app
+            - name: views
+              mountPath: /views
+      volumes:
+        - name: app
+          configMap:
+            name: shuttle-app
+        - name: views
+          configMap:
+            name: shuttle-views

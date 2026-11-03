@@ -1,0 +1,287 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: starfleet
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: collector-config
+  namespace: starfleet
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    exporters:
+      debug:
+        verbosity: detailed
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          exporters: [debug]
+        metrics:
+          receivers: [otlp]
+          exporters: [debug]
+        logs:
+          receivers: [otlp]
+          exporters: [debug]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: collector
+  namespace: starfleet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: collector
+  template:
+    metadata:
+      labels:
+        app: collector
+    spec:
+      containers:
+        - name: collector
+          image: otel/opentelemetry-collector-contrib:0.164.0
+          args: ["--config=/etc/otelcol/config.yaml"]
+          ports:
+            - containerPort: 4317
+            - containerPort: 4318
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otelcol
+          readinessProbe:
+            tcpSocket:
+              port: 4318
+            periodSeconds: 3
+      volumes:
+        - name: config
+          configMap:
+            name: collector-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: collector
+  namespace: starfleet
+spec:
+  selector:
+    app: collector
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shuttle-app
+  namespace: starfleet
+data:
+  app.py: |
+    """Shuttle example application: one service that records traces, metrics and logs.
+    
+    The code is split in two on purpose.
+    
+    1. `plot_course` is the "library". It imports only the OpenTelemetry API
+       (`opentelemetry.trace`, `opentelemetry.metrics`, `opentelemetry.propagate`)
+       and asks the global providers for a tracer and a meter. It never chooses an
+       exporter, a sampler or an endpoint.
+    2. `configure_sdk` is the "application". It installs the SDK providers, the
+       processors, the readers and the exporters. Everything it needs comes from
+       the standard OTEL_* environment variables, except SHUTTLE_CONFIGURE_SDK and
+       SHUTTLE_SPAN_PROCESSORS, which belong to this example application.
+    """
+    import logging
+    import os
+    import random
+    import sys
+    import time
+    
+    from opentelemetry import metrics, propagate, trace
+    from opentelemetry._logs import set_logger_provider
+    
+    SERVICE_LOGGER = logging.getLogger("shuttle")
+    
+    
+    # ---------------------------------------------------------------- the library
+    def plot_course(destination):
+        """Instrumented code. API calls only: this works with or without an SDK."""
+        tracer = trace.get_tracer("starfleet.navigation", "1.0.0")
+        meter = metrics.get_meter("starfleet.navigation", "1.0.0")
+        jumps = meter.create_counter("shuttle.jumps", unit="{jump}", description="Completed jumps")
+        duration = meter.create_histogram("shuttle.jump.duration", unit="s", description="Time to plot a course")
+    
+        started = time.monotonic()
+        with tracer.start_as_current_span("plot-course") as span:
+            span.set_attribute("starfleet.destination", destination)
+            with tracer.start_as_current_span("calculate-jump"):
+                time.sleep(0.05 + random.random() * 0.05)
+            jumps.add(1, {"starfleet.destination": destination})
+            SERVICE_LOGGER.info("course plotted to %s", destination)
+            headers = {}
+            propagate.inject(headers)
+            duration.record(time.monotonic() - started, {"starfleet.destination": destination})
+            return headers
+    
+    
+    # -------------------------------------------------------------- the application
+    def build_span_processors(trace_sdk, export_module, exporter_class, names):
+        """Build the span processors named in SHUTTLE_SPAN_PROCESSORS, in order."""
+    
+        class CrewTagProcessor(trace_sdk.SpanProcessor):
+            """Custom processor: adds one attribute to every span when it starts."""
+    
+            def on_start(self, span, parent_context=None):
+                span.set_attribute("starfleet.crew.size", 4)
+    
+            def on_end(self, span):
+                pass
+    
+            def shutdown(self):
+                pass
+    
+            def force_flush(self, timeout_millis=30000):
+                return True
+    
+        processors = []
+        for name in names:
+            if name == "crew-tag":
+                processors.append(CrewTagProcessor())
+            elif name == "simple":
+                processors.append(export_module.SimpleSpanProcessor(exporter_class()))
+            elif name == "batch":
+                processors.append(export_module.BatchSpanProcessor(exporter_class()))
+            else:
+                print(f"[shuttle] unknown span processor '{name}' ignored", flush=True)
+        return processors
+    
+    
+    def configure_sdk():
+        from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
+        from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+        from opentelemetry.sdk import trace as trace_sdk
+        from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+        from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+        from opentelemetry.sdk.metrics import MeterProvider
+        from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+        from opentelemetry.sdk.resources import Resource
+        from opentelemetry.sdk.trace import export as trace_export
+    
+        # Resource.create reads OTEL_SERVICE_NAME and OTEL_RESOURCE_ATTRIBUTES.
+        resource = Resource.create({})
+    
+        # The sampler comes from OTEL_TRACES_SAMPLER and OTEL_TRACES_SAMPLER_ARG.
+        tracer_provider = trace_sdk.TracerProvider(resource=resource)
+        names = [n.strip() for n in os.environ.get("SHUTTLE_SPAN_PROCESSORS", "batch").split(",") if n.strip()]
+        for processor in build_span_processors(trace_sdk, trace_export, OTLPSpanExporter, names):
+            tracer_provider.add_span_processor(processor)
+        trace.set_tracer_provider(tracer_provider)
+    
+        # The interval comes from OTEL_METRIC_EXPORT_INTERVAL (milliseconds).
+        reader = PeriodicExportingMetricReader(OTLPMetricExporter())
+        metrics.set_meter_provider(MeterProvider(resource=resource, metric_readers=[reader]))
+    
+        logger_provider = LoggerProvider(resource=resource)
+        logger_provider.add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter()))
+        set_logger_provider(logger_provider)
+        SERVICE_LOGGER.addHandler(LoggingHandler(level=logging.INFO, logger_provider=logger_provider))
+        return tracer_provider
+    
+    
+    def main():
+        logging.basicConfig(level=logging.WARNING, stream=sys.stderr)
+        SERVICE_LOGGER.setLevel(logging.INFO)
+    
+        if os.environ.get("SHUTTLE_CONFIGURE_SDK", "true").lower() == "true":
+            configure_sdk()
+    
+        provider = trace.get_tracer_provider()
+        tracer = trace.get_tracer("starfleet.navigation", "1.0.0")
+        sampler = getattr(provider, "sampler", None)
+        print(
+            "[shuttle] pipeline: "
+            f"tracer_provider={type(provider).__name__} "
+            f"tracer={type(tracer).__name__} "
+            f"meter_provider={type(metrics.get_meter_provider()).__name__} "
+            f"processors={os.environ.get('SHUTTLE_SPAN_PROCESSORS', 'batch')} "
+            f"sampler={sampler.get_description() if sampler else 'none'} "
+            f"propagator={type(propagate.get_global_textmap()).__name__} "
+            f"endpoint={os.environ.get('OTEL_EXPORTER_OTLP_ENDPOINT', 'unset')}",
+            flush=True,
+        )
+    
+        with open("/tmp/ready", "w") as ready_file:  # the readiness probe looks for this file
+            ready_file.write("ready\n")
+    
+        destinations = ["vega", "altair", "rigel", "deneb"]
+        while True:
+            headers = plot_course(random.choice(destinations))
+            print(f"[shuttle] injected headers: {sorted(headers)}", flush=True)
+            time.sleep(3)
+    
+    
+    if __name__ == "__main__":
+        main()
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shuttle
+  namespace: starfleet
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: shuttle
+  template:
+    metadata:
+      labels:
+        app: shuttle
+    spec:
+      containers:
+        - name: shuttle
+          image: python:3.12-slim
+          command:
+            - sh
+            - -c
+            - "pip install --quiet --no-cache-dir opentelemetry-sdk==1.45.2 opentelemetry-exporter-otlp-proto-http==1.45.2 && python /app/app.py"
+          env:
+            - name: OTEL_SDK_DISABLED
+              value: "true"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://collector.starfleet.svc.cluster.local:4318"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
+            - name: OTEL_METRIC_EXPORT_INTERVAL
+              value: "5000"
+            - name: OTEL_BSP_SCHEDULE_DELAY
+              value: "1000"
+            - name: SHUTTLE_SPAN_PROCESSORS
+              value: "batch"
+          volumeMounts:
+            - name: app
+              mountPath: /app
+          readinessProbe:
+            exec:
+              command: ["test", "-f", "/tmp/ready"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 90
+      volumes:
+        - name: app
+          configMap:
+            name: shuttle-app

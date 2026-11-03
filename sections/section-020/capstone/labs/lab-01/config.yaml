@@ -1,0 +1,83 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Composability And Extension Capstone (LAB): repair a service whose SDK,
+# resource, exporter, processors, sampler and propagator are all wrong.
+# Graded against the live cluster. Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-capstone-020
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+# Starting state: the SDK is never configured (SHUTTLE_CONFIGURE_SDK=false),
+# there is no service name, the endpoint uses the gRPC port, the processor is
+# the simple one, the sampler is always_off and propagation is switched off.
+bootstrap:
+  init:
+    - name: seed-cluster
+      description: Create the Collector and the broken shuttle service
+      type: file
+      source: bootstrap/01-seed-cluster.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
+    - name: wait-for-settled
+      description: Wait until the new pod exports spans with the custom attribute
+      type: file
+      source: testing/wait-for-settled.sh
+
+validation:
+  scripts:
+    - name: sdk-registered
+      description: The application registers the SDK and the running pod gets a real tracer
+      type: file
+      source: validation/validate-sdk-registered.sh
+      hint: The application reads SHUTTLE_CONFIGURE_SDK. While it is false, only the API runs and every call is a no-op.
+    - name: resource
+      description: The Collector receives data with service.name shuttle and the environment staging
+      type: file
+      source: validation/validate-resource.sh
+      hint: Set OTEL_SERVICE_NAME. Keep the existing OTEL_RESOURCE_ATTRIBUTES value, which holds the environment.
+    - name: export-path
+      description: The endpoint uses the HTTP port 4318 and metrics reach the Collector
+      type: file
+      source: validation/validate-export-path.sh
+      hint: The exporter speaks HTTP with protobuf. The Collector receives HTTP on port 4318.
+    - name: processors-and-sampler
+      description: crew-tag then batch run, with a parent-based ratio sampler at 0.5
+      type: file
+      source: validation/validate-processors-and-sampler.sh
+      hint: Use SHUTTLE_SPAN_PROCESSORS, OTEL_TRACES_SAMPLER=parentbased_traceidratio and OTEL_TRACES_SAMPLER_ARG=0.5.
+    - name: propagation
+      description: Outgoing context carries the traceparent header
+      type: file
+      source: validation/validate-propagation.sh
+      hint: OTEL_PROPAGATORS=none removes every propagator. Remove the variable to get the defaults, or list tracecontext.
+    - name: library-unchanged
+      description: The application code and the image were not changed
+      type: file
+      source: validation/validate-library-unchanged.sh
+      hint: Fix the configuration only. Do not edit the ConfigMap shuttle-app and do not change the image.
+    - name: evidence-recorded
+      description: The ConfigMap composability-evidence matches the pod log and the Collector log
+      type: file
+      source: validation/validate-evidence-recorded.sh
+      hint: Read each value from the pipeline line and the injected headers line of the shuttle log, and from the Collector log.
+
+teardown:
+  keepCluster: false

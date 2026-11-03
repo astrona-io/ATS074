@@ -1,0 +1,68 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Tune The Python Instrumentation Agent (LAB). Graded against the live
+# cluster: Deployment environment variables and the Collector log. Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-lab-070-01
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+      - curlimages/curl:8.22.0
+
+# Starting state: the Collector, the zero-code scout app and a client that
+# calls it. scout has no service name, the Flask instrumentation is disabled
+# and health checks are not excluded.
+bootstrap:
+  init:
+    - name: seed-cluster
+      description: Create the Collector, scout and the client
+      type: file
+      source: bootstrap/01-seed-cluster.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
+    - name: wait-for-settled
+      description: Wait until scout has restarted and sends fresh spans
+      type: file
+      source: testing/wait-for-settled.sh
+
+validation:
+  scripts:
+    - name: flask-instrumentation-enabled
+      description: The Flask instrumentation is not disabled and server spans reach the Collector
+      type: file
+      source: validation/validate-flask-instrumentation-enabled.sh
+      hint: Look at OTEL_PYTHON_DISABLED_INSTRUMENTATIONS on the scout Deployment. Remove it, then wait for the new pod to send spans.
+    - name: service-identity
+      description: scout reports service.name scout and service.namespace starfleet
+      type: file
+      source: validation/validate-service-identity.sh
+      hint: Set OTEL_SERVICE_NAME and add service.namespace=starfleet to OTEL_RESOURCE_ATTRIBUTES on the scout Deployment.
+    - name: health-checks-excluded
+      description: Spans for the health check path are no longer recorded
+      type: file
+      source: validation/validate-health-checks-excluded.sh
+      hint: OTEL_PYTHON_EXCLUDED_URLS takes a comma separated list of regular expressions that match the request URL.
+    - name: workloads-running
+      description: scout stays zero-code and all workloads are available
+      type: file
+      source: validation/validate-workloads-running.sh
+      hint: Change only the Deployment environment. Do not add OpenTelemetry code to app.py and do not remove opentelemetry-instrument from start.sh.
+
+teardown:
+  keepCluster: false

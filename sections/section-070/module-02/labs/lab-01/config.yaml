@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Route Telemetry Through A Collector Agent (LAB). Graded against the live
+# cluster: Deployment environment, the ConfigMap agent-config and the gateway
+# Collector log. Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-lab-070-02
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+# Starting state: a gateway Collector, an agent Collector (DaemonSet) with only
+# a batch processor, and the shuttle SDK app that sends straight to the gateway.
+bootstrap:
+  init:
+    - name: seed-cluster
+      description: Create the gateway, the agent and shuttle
+      type: file
+      source: bootstrap/01-seed-cluster.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
+    - name: wait-for-settled
+      description: Wait until the gateway log shows spans enriched by the agent
+      type: file
+      source: testing/wait-for-settled.sh
+
+validation:
+  scripts:
+    - name: shuttle-uses-agent
+      description: shuttle sends OTLP to the agent Service, not to the gateway
+      type: file
+      source: validation/validate-shuttle-uses-agent.sh
+      hint: Change OTEL_EXPORTER_OTLP_ENDPOINT on the shuttle Deployment to the agent Service on port 4318.
+    - name: agent-processors
+      description: The agent config defines memory_limiter, resourcedetection (env, system) and batch in the right order
+      type: file
+      source: validation/validate-agent-processors.sh
+      hint: Write the processors list of both pipelines on one line, for example processors [memory_limiter, resourcedetection, batch]. memory_limiter goes first and batch goes last.
+    - name: agent-enriches-telemetry
+      description: Fresh spans at the gateway carry host.name and the environment attribute added by the agent
+      type: file
+      source: validation/validate-agent-enriches-telemetry.sh
+      hint: A Collector reads its config only at start. Restart the agent DaemonSet after you change the ConfigMap.
+    - name: workloads-running
+      description: gateway, agent and shuttle are available and the agent still exports to the gateway
+      type: file
+      source: validation/validate-workloads-running.sh
+      hint: Do not edit gateway-config and do not remove the otlp exporter of the agent.
+
+teardown:
+  keepCluster: false

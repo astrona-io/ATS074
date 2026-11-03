@@ -1,0 +1,290 @@
+# Knowledge check for section 020. Listed in astrona.yaml as a `type: quiz` entry after the capstone lab.
+---
+schema_version: 1
+kind: question_bank
+id: ats074-020
+course_id: ATS074
+exam_code: OTCA
+status: draft
+provenance: Original practice material written for this course; not official exam
+  questions.
+scope:
+  type: section
+  id: section-020
+  title: Composability and Extension
+questions:
+- id: ats074-020-q01
+  type: single_choice
+  difficulty: beginner
+  learning_objective: Explain which package library code imports and which package
+    an application installs
+  source_readings:
+  - sections/section-020/module-01/course-01-api-and-sdk-as-separate-packages.md
+  prompt: A Python library creates spans for outgoing calls. Which dependency should
+    the library declare, and why?
+  options:
+  - id: a
+    text: "`opentelemetry-sdk`, because the library must be able to export its own
+      spans."
+    explanation: This option makes every library choose its own pipeline, which is
+      what the split avoids.
+  - id: b
+    text: "`opentelemetry-exporter-otlp-proto-http`, because spans must be sent over
+      OTLP."
+    explanation: The exporter is chosen by the application, not by a library.
+  - id: c
+    text: "`opentelemetry-api`, because the library only needs to ask for a tracer
+      and create spans, and the application decides what happens to them."
+    explanation: Correct. The API has no exporter, sampler or network code, so any
+      SDK the application installs can handle the library's spans.
+  - id: d
+    text: Nothing, because spans are created by the Collector.
+    explanation: The Collector receives telemetry; it does not create spans inside
+      application code.
+  correct_option: c
+  explanation: Correct. The API has no exporter, sampler or network code, so any SDK
+    the application installs can handle the library's spans.
+- id: ats074-020-q02
+  type: single_choice
+  difficulty: beginner
+  learning_objective: Predict the behaviour of the API when no SDK is registered
+  source_readings:
+  - sections/section-020/module-01/course-02-the-no-op-api-and-disabled-sdks.md
+  prompt: A service calls `trace.get_tracer("jump")` and `start_as_current_span("plot-course")`,
+    but never builds or registers an SDK tracer provider. What happens?
+  options:
+  - id: a
+    text: The code runs, the tracer comes from a proxy that does nothing, and no span
+      is exported.
+    explanation: Correct. With no SDK registered, the API returns no-op objects, so
+      the instrumented code runs and produces no telemetry.
+  - id: b
+    text: The call raises an exception at start-up.
+    explanation: The API is designed to be safe to call without an SDK.
+  - id: c
+    text: Spans are exported to `localhost:4318` by default.
+    explanation: Exporting needs an SDK and an exporter, and neither is present.
+  - id: d
+    text: Spans are stored in memory until an SDK is registered.
+    explanation: The no-op API does not record anything.
+  correct_option: a
+  explanation: Correct. With no SDK registered, the API returns no-op objects, so
+    the instrumented code runs and produces no telemetry.
+- id: ats074-020-q03
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Describe what OTEL_SDK_DISABLED changes
+  source_readings:
+  - sections/section-020/module-01/course-02-the-no-op-api-and-disabled-sdks.md
+  prompt: The Deployment has `OTEL_SDK_DISABLED=true`. The application code is unchanged
+    and still configures the SDK. What is the effect?
+  options:
+  - id: a
+    text: The Collector rejects the data from this service.
+    explanation: The Collector never sees any data, so it has nothing to reject.
+  - id: b
+    text: The application restarts until the variable is removed.
+    explanation: The variable does not affect the process lifecycle.
+  - id: c
+    text: Only traces stop; metrics and logs continue.
+    explanation: The variable disables the SDK for all signals.
+  - id: d
+    text: The SDK components are replaced by no-op ones, so the application runs and
+      no telemetry is exported.
+    explanation: Correct. `OTEL_SDK_DISABLED` turns the SDK into a no-op without code
+      changes.
+  correct_option: d
+  explanation: Correct. `OTEL_SDK_DISABLED` turns the SDK into a no-op without code
+    changes.
+- id: ats074-020-q04
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Interpret package versions and stability
+  source_readings:
+  - sections/section-020/module-01/course-03-api-packages-stability-and-versioning.md
+  prompt: "`pip list` shows `opentelemetry-api 1.45.2`, `opentelemetry-sdk 1.45.2`
+    and a contrib instrumentation package at `0.66b0`. What does this tell you?"
+  options:
+  - id: a
+    text: All three packages carry the same stability guarantee.
+    explanation: Versions starting with 0 and ending in b are beta and make no such
+      promise.
+  - id: b
+    text: The API and SDK are stable 1.x packages, while the `0.66b0` package is beta
+      and its interface may change between releases.
+    explanation: Correct. Stable 1.x packages follow the compatibility rules; beta
+      packages may change.
+  - id: c
+    text: The contrib package is newer than the SDK and therefore stable.
+    explanation: A higher number inside 0.x does not mean stable.
+  - id: d
+    text: The beta suffix only applies to packages without tests.
+    explanation: The suffix marks stability, not test coverage.
+  correct_option: b
+  explanation: Correct. Stable 1.x packages follow the compatibility rules; beta packages
+    may change.
+- id: ats074-020-q05
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Identify the owner of a resource and the effect of a missing
+    service name
+  source_readings:
+  - sections/section-020/module-02/course-01-providers-resources-and-instrumentation-scope.md
+  prompt: 'The Collector log shows `service.name: Str(unknown_service:python)`. Which
+    change fixes it without touching the application code?'
+  options:
+  - id: a
+    text: Set `OTEL_TRACES_SAMPLER` to `always_on`.
+    explanation: The sampler decides which traces are kept, not which service they
+      belong to.
+  - id: b
+    text: Change the instrumentation scope name in the code.
+    explanation: The scope names the instrumentation library, not the service.
+  - id: c
+    text: Change the Collector `debug` exporter verbosity.
+    explanation: The exporter prints what it receives; it does not set the name.
+  - id: d
+    text: Set `OTEL_SERVICE_NAME` on the Deployment.
+    explanation: Correct. The resource is built from environment variables at start-up,
+      so setting the name there changes it.
+  correct_option: d
+  explanation: Correct. The resource is built from environment variables at start-up,
+    so setting the name there changes it.
+- id: ats074-020-q06
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Choose between the simple and the batch span processor
+  source_readings:
+  - sections/section-020/module-02/course-02-processors-readers-and-exporters.md
+  prompt: A busy service uses the simple span processor and its request latency rises.
+    Which change addresses the cause?
+  options:
+  - id: a
+    text: Switch the exporter from HTTP to gRPC and keep the simple processor.
+    explanation: The transport is not the cause; each span still blocks on its own
+      export.
+  - id: b
+    text: Lower the sampling ratio to 0 so no span is ever created.
+    explanation: This removes telemetry instead of fixing the pipeline.
+  - id: c
+    text: Switch to the batch processor, which queues finished spans and exports them
+      in groups on a background thread.
+    explanation: Correct. The simple processor exports each span as it ends, on the
+      calling path; batching moves the export off it.
+  - id: d
+    text: Increase `OTEL_RESOURCE_ATTRIBUTES`.
+    explanation: Resource attributes do not change the export path.
+  correct_option: c
+  explanation: Correct. The simple processor exports each span as it ends, on the
+    calling path; batching moves the export off it.
+- id: ats074-020-q07
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Match an OTLP endpoint to the transport of the exporter
+  source_readings:
+  - sections/section-020/module-02/course-02-processors-readers-and-exporters.md
+  prompt: The service uses the OTLP HTTP exporter with protobuf and its endpoint is
+    `http://collector.starfleet.svc.cluster.local:4317`. The Collector listens for
+    gRPC on 4317 and for HTTP on 4318. What is the fix?
+  options:
+  - id: a
+    text: Point the endpoint at port 4318.
+    explanation: Correct. HTTP with protobuf goes to the Collector HTTP receiver on
+      4318.
+  - id: b
+    text: Restart the Collector.
+    explanation: The Collector is running as configured; the client uses the wrong
+      port.
+  - id: c
+    text: Set `OTEL_SDK_DISABLED=true`.
+    explanation: This stops all telemetry instead of repairing it.
+  - id: d
+    text: Use the batch processor.
+    explanation: The processor does not change which port receives the data.
+  correct_option: a
+  explanation: Correct. HTTP with protobuf goes to the Collector HTTP receiver on
+    4318.
+- id: ats074-020-q08
+  type: single_choice
+  difficulty: intermediate
+  learning_objective: Explain the parent-based sampler and the trace id ratio
+  source_readings:
+  - sections/section-020/module-02/course-03-samplers-propagators-and-custom-extensions.md
+  prompt: A team needs half of the root traces kept, and any span whose parent was
+    kept must also be kept. Which setting fits?
+  options:
+  - id: a
+    text: "`OTEL_TRACES_SAMPLER=always_off`"
+    explanation: This keeps no traces.
+  - id: b
+    text: "`OTEL_TRACES_SAMPLER=parentbased_traceidratio` with `OTEL_TRACES_SAMPLER_ARG=0.5`"
+    explanation: Correct. The ratio applies to root spans, and all other spans follow
+      the sampled flag of their parent.
+  - id: c
+    text: "`OTEL_TRACES_SAMPLER=traceidratio` with `OTEL_TRACES_SAMPLER_ARG=0.5`,
+      with no parent handling."
+    explanation: This applies the ratio to every span independently, so a child can
+      be dropped although its parent was kept.
+  - id: d
+    text: "`OTEL_TRACES_SAMPLER=parentbased_always_off`"
+    explanation: This drops root spans, so no trace is kept.
+  correct_option: b
+  explanation: Correct. The ratio applies to root spans, and all other spans follow
+    the sampled flag of their parent.
+- id: ats074-020-q09
+  type: single_choice
+  difficulty: advanced
+  learning_objective: Predict the effect of disabling propagators
+  source_readings:
+  - sections/section-020/module-02/course-03-samplers-propagators-and-custom-extensions.md
+  prompt: A service has `OTEL_PROPAGATORS=none`. It calls a downstream service inside
+    a sampled span. What does the outgoing request carry?
+  options:
+  - id: a
+    text: A `traceparent` header, because the span is sampled.
+    explanation: Injection is done by a propagator, and none is configured.
+  - id: b
+    text: A `baggage` header only.
+    explanation: Baggage also needs a propagator.
+  - id: c
+    text: No trace context header, so the downstream service starts a new trace.
+    explanation: Correct. With no propagator, nothing is injected and the trace is
+      broken at this call.
+  - id: d
+    text: The request fails with an error.
+    explanation: Missing propagators do not make the request fail.
+  correct_option: c
+  explanation: Correct. With no propagator, nothing is injected and the trace is broken
+    at this call.
+- id: ats074-020-q10
+  type: single_choice
+  difficulty: advanced
+  learning_objective: State the rules a custom span processor must follow
+  source_readings:
+  - sections/section-020/module-02/course-03-samplers-propagators-and-custom-extensions.md
+  prompt: A team writes a custom span processor that adds an attribute and then calls
+    a remote service on every span end. Which rule does this break, and what is the
+    safer design?
+  options:
+  - id: a
+    text: No rule; processors may do any work.
+    explanation: Processors run on the application path, so unbounded work slows it
+      down.
+  - id: b
+    text: It breaks the rule that processors need a resource; add `OTEL_SERVICE_NAME`.
+    explanation: The resource is unrelated to this fault.
+  - id: c
+    text: It breaks the rule that processors cannot change spans; use a sampler instead.
+    explanation: A processor may set attributes in `on_start`; the problem is the
+      remote call.
+  - id: d
+    text: It breaks the rule that work must be bounded and must not fail into the
+      application; add the attribute in `on_start` from local data and leave network
+      calls to an exporter or the Collector.
+    explanation: Correct. Custom components run inside the application process, so
+      they must be cheap, must catch their own errors and must not call back into
+      the telemetry system.
+  correct_option: d
+  explanation: Correct. Custom components run inside the application process, so they
+    must be cheap, must catch their own errors and must not call back into the telemetry
+    system.

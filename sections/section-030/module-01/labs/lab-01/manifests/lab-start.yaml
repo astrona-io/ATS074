@@ -1,0 +1,186 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: starfleet
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shuttle-app
+  namespace: starfleet
+data:
+  app.py: |
+    import os
+    import random
+    import sys
+    import time
+    
+    from opentelemetry import metrics, trace
+    from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.sdk.metrics import MeterProvider
+    from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    
+    
+    def say(message):
+        print("shuttle: " + message, flush=True)
+    
+    
+    protocol = os.environ.get("OTEL_EXPORTER_OTLP_PROTOCOL", "http/protobuf")
+    if protocol != "http/protobuf":
+        say("this build ships only the http/protobuf exporter, got protocol " + protocol)
+        sys.exit(1)
+    
+    # Resource.create() reads OTEL_RESOURCE_ATTRIBUTES and OTEL_SERVICE_NAME.
+    resource = Resource.create({})
+    say("resource " + str(dict(resource.attributes)))
+    
+    # The sampler comes from OTEL_TRACES_SAMPLER and OTEL_TRACES_SAMPLER_ARG.
+    tracer_provider = TracerProvider(resource=resource)
+    # The exporter reads OTEL_EXPORTER_OTLP_* and the processor reads OTEL_BSP_*.
+    tracer_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+    trace.set_tracer_provider(tracer_provider)
+    say("sampler " + tracer_provider.sampler.get_description())
+    
+    # The reader interval comes from OTEL_METRIC_EXPORT_INTERVAL.
+    reader = PeriodicExportingMetricReader(OTLPMetricExporter())
+    metrics.set_meter_provider(MeterProvider(resource=resource, metric_readers=[reader]))
+    
+    tracer = trace.get_tracer("shuttle.dock", "1.0.0")
+    meter = metrics.get_meter("shuttle.dock", "1.0.0")
+    dock_counter = meter.create_counter("shuttle.docks", unit="1", description="Completed docking runs")
+    dock_duration = meter.create_histogram("shuttle.dock.duration", unit="s", description="Docking run duration")
+    
+    count = 0
+    while True:
+        count += 1
+        started = time.time()
+        with tracer.start_as_current_span("dock") as span:
+            span.set_attribute("shuttle.run", count)
+            with tracer.start_as_current_span("scan"):
+                time.sleep(random.uniform(0.05, 0.2))
+            recording = span.is_recording()
+        dock_counter.add(1, {"shuttle.bay": "bay-" + str(count % 3)})
+        dock_duration.record(time.time() - started)
+        say("run " + str(count) + " recording=" + str(recording))
+        time.sleep(2)
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: collector-config
+  namespace: starfleet
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    exporters:
+      debug:
+        verbosity: detailed
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          exporters: [debug]
+        metrics:
+          receivers: [otlp]
+          exporters: [debug]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: collector
+  namespace: starfleet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: collector
+  template:
+    metadata:
+      labels:
+        app: collector
+    spec:
+      containers:
+        - name: collector
+          image: otel/opentelemetry-collector-contrib:0.164.0
+          args: ["--config=/etc/otelcol/config.yaml"]
+          ports:
+            - containerPort: 4317
+            - containerPort: 4318
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otelcol
+      volumes:
+        - name: config
+          configMap:
+            name: collector-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: collector
+  namespace: starfleet
+spec:
+  selector:
+    app: collector
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shuttle
+  namespace: starfleet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shuttle
+  template:
+    metadata:
+      labels:
+        app: shuttle
+    spec:
+      containers:
+        - name: shuttle
+          image: python:3.12-slim
+          command:
+            - sh
+            - -c
+            - pip install --quiet --no-cache-dir opentelemetry-sdk==1.45.2 opentelemetry-exporter-otlp-proto-http==1.45.2 && python /app/app.py
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: OTEL_SDK_DISABLED
+              value: "true"
+            - name: OTEL_SERVICE_NAME
+              value: "shuttle-test"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "service.name=shuttle,deployment.environment.name=staging;service.version=2.4.0"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://collector:4318"
+            - name: OTEL_METRIC_EXPORT_INTERVAL
+              value: "5000"
+            - name: OTEL_BSP_SCHEDULE_DELAY
+              value: "1000"
+          volumeMounts:
+            - name: app
+              mountPath: /app
+      volumes:
+        - name: app
+          configMap:
+            name: shuttle-app

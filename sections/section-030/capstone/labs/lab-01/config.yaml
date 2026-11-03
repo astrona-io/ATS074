@@ -1,0 +1,65 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Capstone: Configure The shuttle SDK End To End (LAB). Graded against the live
+# cluster: Deployment environment, a Secret and the Collector log. Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-capstone-030
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+# Starting state: the shuttle service runs with several configuration faults.
+bootstrap:
+  init:
+    - name: seed-cluster
+      description: Start the collector and the misconfigured shuttle service
+      type: file
+      source: bootstrap/01-seed-cluster.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
+    - name: wait-for-settled
+      description: Wait for fresh spans and metrics
+      type: file
+      source: testing/wait-for-settled.sh
+
+validation:
+  scripts:
+    - name: resource-identity
+      description: Fresh telemetry carries the requested service name, namespace, environment and version
+      type: file
+      source: validation/validate-resource-identity.sh
+      hint: OTEL_SERVICE_NAME wins over service.name in OTEL_RESOURCE_ATTRIBUTES. Separate pairs with commas.
+    - name: signals-delivered
+      description: The Collector receives fresh spans and metrics
+      type: file
+      source: validation/validate-signals-delivered.sh
+      hint: A signal-specific endpoint is used as written, with no signal path added. Remove it or add /v1/traces.
+    - name: sampler-and-batching
+      description: Sampler, batch delay and metric interval are set as requested
+      type: file
+      source: validation/validate-sampler-and-batching.sh
+      hint: Time values are whole milliseconds. The sampler argument is a number from 0 to 1.
+    - name: headers-from-secret
+      description: The OTLP headers come from the Secret collector-auth and no token is in the Deployment text
+      type: file
+      source: validation/validate-headers-from-secret.sh
+      hint: Create the Secret with the key otlp-headers, then use valueFrom.secretKeyRef on OTEL_EXPORTER_OTLP_HEADERS.
+
+teardown:
+  keepCluster: false

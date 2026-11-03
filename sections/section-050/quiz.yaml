@@ -1,0 +1,265 @@
+# Knowledge check for section 050. Listed in astrona.yaml as a `type: quiz` entry after the capstone lab.
+schema_version: 1
+kind: question_bank
+id: ats074-050
+course_id: ATS074
+exam_code: OTCA
+status: draft
+provenance: Original practice material written for this course; not official exam questions.
+scope:
+  type: section
+  id: section-050
+  title: "SDK Pipelines"
+questions:
+  - id: ats074-050-q01
+    type: single_choice
+    difficulty: beginner
+    learning_objective: "Explain how a parent-based ratio sampler decides for a span that has a parent"
+    source_readings:
+      - sections/section-050/module-01/course-01-providers-samplers-and-the-span-path.md
+    prompt: "A service uses `OTEL_TRACES_SAMPLER=parentbased_traceidratio` with `OTEL_TRACES_SAMPLER_ARG=0.25`. A request arrives with a trace context whose sampled flag is set, and the service starts a child span. What does the sampler do with the new span?"
+    options:
+      - id: a
+        text: "It applies the ratio of 0.25 to the trace ID, so the span is kept in one of four cases."
+        explanation: "The ratio applies only to root spans. A span with a parent follows the parent."
+      - id: b
+        text: "It drops the span, because a ratio below 1.0 always drops remote parents."
+        explanation: "A ratio does not drop remote parents, and the parent-based sampler uses the decision of the remote parent."
+      - id: c
+        text: "It records and samples the span, because it follows the decision of the sampled parent."
+        explanation: "Correct. The parent-based samplers delegate to the parent decision when a parent exists. The ratio applies only to root spans, which have no parent. A parent with the sampled flag set therefore gives a sampled child."
+      - id: d
+        text: "It records the span but does not sample it, because the service is not the root."
+        explanation: "There is no recording-only outcome for a sampled parent. The child follows the sampled decision."
+    correct_option: c
+    explanation: "The parent-based samplers delegate to the parent decision when a parent exists. The ratio applies only to root spans, which have no parent. A parent with the sampled flag set therefore gives a sampled child."
+
+  - id: ats074-050-q02
+    type: single_choice
+    difficulty: beginner
+    learning_objective: "Describe what happens to a span when the sampler returns the drop decision"
+    source_readings:
+      - sections/section-050/module-01/course-01-providers-samplers-and-the-span-path.md
+    prompt: "The sampler of a service is `always_off`. What reaches the span processor and the exporter for a request?"
+    options:
+      - id: a
+        text: "No span is exported, because a dropped span is not recorded and never produces data for the processor to export."
+        explanation: "Correct. A drop decision creates a non-recording span. It has a valid context for propagation, but it records no data and is not passed on for export."
+      - id: b
+        text: "Every span is exported, and the Collector drops it later."
+        explanation: "A dropped span has no recorded data, so there is nothing for the Collector to drop."
+      - id: c
+        text: "Only the root span is exported, because it carries the trace ID."
+        explanation: "No span of the trace is exported under this sampler, root or not."
+      - id: d
+        text: "Spans are queued and exported only when the process shuts down."
+        explanation: "The span is not queued. The processor receives no recorded span, and shutdown does not change that."
+    correct_option: a
+    explanation: "A drop decision creates a non-recording span. It has a valid context for propagation, but it records no data and is not passed on for export."
+
+  - id: ats074-050-q03
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Compare the simple and the batching span processor"
+    source_readings:
+      - sections/section-050/module-01/course-02-span-processors-and-exporters.md
+    prompt: "A service handles requests with a strict latency budget and exports spans to a Collector across the network. Which statement about the two span processors is correct?"
+    options:
+      - id: a
+        text: "The simple processor is faster, because it uses a queue and a worker thread."
+        explanation: "The simple processor has no queue and no worker thread. It exports in the calling thread."
+      - id: b
+        text: "The batching processor keeps latency low, because it copies finished spans into a queue and a worker thread exports them in batches."
+        explanation: "Correct. The simple processor exports each span when it ends, in the calling thread. The batching processor returns at once after queuing the span, and a worker exports batches, so a slow destination does not slow the application."
+      - id: c
+        text: "The batching processor exports each span as it ends and waits for the answer."
+        explanation: "This describes the simple processor, not the batching processor."
+      - id: d
+        text: "Both processors block the calling thread until the Collector confirms the export."
+        explanation: "Only the simple processor waits in the calling thread. The batching processor returns after queuing the span."
+    correct_option: b
+    explanation: "The simple processor exports each span when it ends, in the calling thread. The batching processor returns at once after queuing the span, and a worker exports batches, so a slow destination does not slow the application."
+
+  - id: ats074-050-q04
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Predict the result of a full batching queue"
+    source_readings:
+      - sections/section-050/module-01/course-02-span-processors-and-exporters.md
+    prompt: "The Collector is unreachable. A service has `OTEL_BSP_MAX_QUEUE_SIZE=4`. What happens to new spans and to the application?"
+    options:
+      - id: a
+        text: "The application blocks until the Collector is reachable again."
+        explanation: "The batching processor does not block the application when its queue is full."
+      - id: b
+        text: "The application stops with an exception from the exporter."
+        explanation: "Exporter failures are logged by the SDK and do not stop the application."
+      - id: c
+        text: "The SDK writes the spans to disk and sends them after the outage."
+        explanation: "The SDK has no disk buffer. Spans that do not fit are dropped."
+      - id: d
+        text: "The processor logs a warning and drops queued spans, and the application keeps running."
+        explanation: "Correct. The batching processor never blocks the application. When the queue is full it drops spans and logs a warning, so delivery is at most once."
+    correct_option: d
+    explanation: "The batching processor never blocks the application. When the queue is full it drops spans and logs a warning, so delivery is at most once."
+
+  - id: ats074-050-q05
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Configure the batching processor with valid sizes"
+    source_readings:
+      - sections/section-050/module-01/course-02-span-processors-and-exporters.md
+    prompt: "Which setting leads to an error when the batching span processor is created?"
+    options:
+      - id: a
+        text: "`OTEL_BSP_MAX_QUEUE_SIZE=256` with `OTEL_BSP_MAX_EXPORT_BATCH_SIZE=512`."
+        explanation: "Correct. The batch size must not be larger than the queue size. The other combinations are valid."
+      - id: b
+        text: "`OTEL_BSP_SCHEDULE_DELAY=1000` with the default queue size."
+        explanation: "The delay can be any positive value and does not conflict with the queue size."
+      - id: c
+        text: "`OTEL_BSP_MAX_QUEUE_SIZE=4096` with `OTEL_BSP_MAX_EXPORT_BATCH_SIZE=256`."
+        explanation: "The batch size of 256 is smaller than the queue size of 4096, so this is valid."
+      - id: d
+        text: "`OTEL_BSP_EXPORT_TIMEOUT=10000` with the default delay."
+        explanation: "The export timeout does not depend on the other sizes, so this is valid."
+    correct_option: a
+    explanation: "The batch size must not be larger than the queue size. The other combinations are valid."
+
+  - id: ats074-050-q06
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Explain why spans can be lost when a pod stops"
+    source_readings:
+      - sections/section-050/module-01/course-03-flush-and-shutdown.md
+    prompt: "A pod uses the batching span processor with a schedule delay of 20 seconds. The pod receives `SIGTERM`, and the application calls `os._exit(0)` in its handler. What happens to the spans in the queue?"
+    options:
+      - id: a
+        text: "They are exported, because Kubernetes waits for the grace period."
+        explanation: "The grace period only delays `SIGKILL`. It does not run the flush when the handler exits at once."
+      - id: b
+        text: "They are exported, because the SDK flushes in an exit handler."
+        explanation: "The exit handler is skipped by `os._exit`, so the flush does not run."
+      - id: c
+        text: "They are lost, because `os._exit` ends the process without running the exit handlers that flush the queue."
+        explanation: "Correct. `os._exit` ends the interpreter at once and skips the `atexit` handlers, so the provider never calls shutdown. Spans that were still queued are lost."
+      - id: d
+        text: "They are written to the pod log and replayed by the next pod."
+        explanation: "The SDK keeps no copy of queued spans outside the process, and the next pod does not replay them."
+    correct_option: c
+    explanation: "`os._exit` ends the interpreter at once and skips the `atexit` handlers, so the provider never calls shutdown. Spans that were still queued are lost."
+
+  - id: ats074-050-q07
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Describe how a view changes a metric stream"
+    source_readings:
+      - sections/section-050/module-02/course-01-meter-providers-views-and-aggregation.md
+    prompt: "A view for the counter `shuttle.requests` lists `attribute_keys=[\"shuttle.route\"]`. The instrument was recorded with `shuttle.route` and `shuttle.client`. What does the exported stream contain?"
+    options:
+      - id: a
+        text: "Two streams, one for each attribute."
+        explanation: "The view lists one attribute key to keep. It does not create one stream for each attribute."
+      - id: b
+        text: "One point for each route, in which the measurements of all clients are summed."
+        explanation: "Correct. The view removes the attributes that are not listed before aggregation, so points that differ only in the removed attribute are merged into one."
+      - id: c
+        text: "One point for each route and client pair, with an empty client value."
+        explanation: "The removed attribute does not remain with an empty value. The points are merged."
+      - id: d
+        text: "No data, because a view cannot remove attributes."
+        explanation: "A view with `attribute_keys` is exactly the way to remove attributes."
+    correct_option: b
+    explanation: "The view removes the attributes that are not listed before aggregation, so points that differ only in the removed attribute are merged into one."
+
+  - id: ats074-050-q08
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Use the drop aggregation in a view"
+    source_readings:
+      - sections/section-050/module-02/course-01-meter-providers-views-and-aggregation.md
+    prompt: "A view with the drop aggregation is set for `shuttle.fuel.used`. Application code still calls `add` on the instrument. What is the result?"
+    options:
+      - id: a
+        text: "The call raises an error that the application must handle."
+        explanation: "A dropped stream does not raise errors, because the instrumentation code must stay unchanged."
+      - id: b
+        text: "The measurements are exported with the value zero."
+        explanation: "Nothing is exported for a dropped stream, not even a zero value."
+      - id: c
+        text: "The measurements are sent to a second reader instead."
+        explanation: "The drop aggregation discards the stream. It does not move it to another reader."
+      - id: d
+        text: "The call succeeds, but no stream is stored or exported for the instrument."
+        explanation: "Correct. A dropped stream is removed from the pipeline. The instrument stays usable, so the instrumentation code does not change."
+    correct_option: d
+    explanation: "A dropped stream is removed from the pipeline. The instrument stays usable, so the instrumentation code does not change."
+
+  - id: ats074-050-q09
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Choose a temporality for a backend that cannot tolerate lost increments"
+    source_readings:
+      - sections/section-050/module-02/course-02-metric-readers-and-temporality.md
+    prompt: "A service exports a counter with delta temporality. An export fails because the Collector is down for the whole interval. What is the effect?"
+    options:
+      - id: a
+        text: "The next point contains the full total, so nothing is lost."
+        explanation: "This describes cumulative temporality. Delta points do not hold the total."
+      - id: b
+        text: "The SDK resends the failed point after the Collector recovers."
+        explanation: "The SDK does not keep failed points for a later retry."
+      - id: c
+        text: "The increments of the failed interval are lost, because later points report only their own change."
+        explanation: "Correct. Delta points hold only the change since the previous export. A failed export therefore removes that change from the series. Cumulative temporality would repair the gap with the next total."
+      - id: d
+        text: "The counter is reset to zero in the application."
+        explanation: "Temporality changes only how points are reported. The state in the application is not reset."
+    correct_option: c
+    explanation: "Delta points hold only the change since the previous export. A failed export therefore removes that change from the series. Cumulative temporality would repair the gap with the next total."
+
+  - id: ats074-050-q10
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Explain the effect of the export interval on a short job"
+    source_readings:
+      - sections/section-050/module-02/course-02-metric-readers-and-temporality.md
+    prompt: "A job uses the periodic metric reader with `OTEL_METRIC_EXPORT_INTERVAL=60000`, runs for 20 seconds and exits without calling flush or shutdown. What does the backend receive?"
+    options:
+      - id: a
+        text: "The metrics of the whole run, because the reader exports at exit."
+        explanation: "The reader does not export at exit unless the provider is flushed or shut down."
+      - id: b
+        text: "Nothing from this run, because the process ended before the first periodic collection."
+        explanation: "Correct. The reader collects on a timer and not when measurements are recorded. A process that ends before the first interval and does not flush or shut down sends no metric data."
+      - id: c
+        text: "One data point with the average of the run."
+        explanation: "The SDK does not compute an average of the run. It exports aggregated streams."
+      - id: d
+        text: "Only the histograms, because counters need a longer interval."
+        explanation: "Counters and histograms follow the same collection timer."
+    correct_option: b
+    explanation: "The reader collects on a timer and not when measurements are recorded. A process that ends before the first interval and does not flush or shut down sends no metric data."
+
+  - id: ats074-050-q11
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Explain how a log record is linked to a trace"
+    source_readings:
+      - sections/section-050/module-02/course-03-log-pipelines-and-delivery-limits.md
+    prompt: "A log line is written with the standard `logging` module inside an active span, and the OpenTelemetry `LoggingHandler` is attached. How does the exported log record get its trace ID?"
+    options:
+      - id: a
+        text: "The handler reads the trace and span identifiers from the current context when it creates the record."
+        explanation: "Correct. The bridge reads the active span context when the record is created and copies the identifiers onto it. Later stages only transport them."
+      - id: b
+        text: "The Collector matches the log text against span names."
+        explanation: "The Collector does not match log text with span names. It only reads the identifiers on the record."
+      - id: c
+        text: "The batching log processor adds the identifiers when it exports the batch."
+        explanation: "The processor only batches records. The identifiers were set earlier by the bridge."
+      - id: d
+        text: "The application must pass the trace ID as an argument to every logging call."
+        explanation: "The bridge reads the context, so the application does not pass the identifiers."
+    correct_option: a
+    explanation: "The bridge reads the active span context when the record is created and copies the identifiers onto it. Later stages only transport them."

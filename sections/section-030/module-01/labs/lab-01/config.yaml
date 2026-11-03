@@ -1,0 +1,61 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Fix The Identity And Environment Variables Of The shuttle Service (LAB).
+# Graded against the live cluster: Deployment environment and Collector log.
+# Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-lab-030-01
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+# Starting state: the shuttle service runs with a broken configuration.
+bootstrap:
+  init:
+    - name: seed-cluster
+      description: Start the collector and the misconfigured shuttle service
+      type: file
+      source: bootstrap/01-seed-cluster.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
+    - name: wait-for-settled
+      description: Wait for fresh telemetry from the new pod
+      type: file
+      source: testing/wait-for-settled.sh
+
+validation:
+  scripts:
+    - name: sdk-enabled
+      description: The SDK is enabled and the shuttle Deployment is rolled out
+      type: file
+      source: validation/validate-sdk-enabled.sh
+      hint: OTEL_SDK_DISABLED is true only for the text true. Remove the variable or set it to false.
+    - name: service-name
+      description: The Collector receives telemetry with service.name shuttle
+      type: file
+      source: validation/validate-service-name.sh
+      hint: OTEL_SERVICE_NAME wins over service.name in OTEL_RESOURCE_ATTRIBUTES. Set it to shuttle or remove it.
+    - name: resource-attributes
+      description: The resource carries service.namespace, service.version and deployment.environment.name with the requested values
+      type: file
+      source: validation/validate-resource-attributes.sh
+      hint: Separate the pairs of OTEL_RESOURCE_ATTRIBUTES with commas, not semicolons.
+
+teardown:
+  keepCluster: false

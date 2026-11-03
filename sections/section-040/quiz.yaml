@@ -1,0 +1,303 @@
+# Knowledge check for section 040. Listed in astrona.yaml as a `type: quiz` entry after the capstone lab.
+schema_version: 1
+kind: question_bank
+id: ats074-040
+course_id: ATS074
+exam_code: OTCA
+status: draft
+provenance: Original practice material written for this course; not official exam questions.
+scope:
+  type: section
+  id: section-040
+  title: "Signals (Tracing, Metric, Log)"
+questions:
+  - id: ats074-040-q01
+    type: single_choice
+    difficulty: beginner
+    learning_objective: "Name the object that owns the Resource and the span processors in the tracing SDK"
+    source_readings:
+      - sections/section-040/module-01/course-01-tracer-provider-resource-and-tracer.md
+    prompt: |-
+      Which object of the tracing SDK holds the Resource and the list of span processors, and creates tracers?
+    options:
+      - id: a
+        text: "The `TracerProvider`."
+        explanation: "Correct. The provider owns the configuration: the Resource, the sampler, the span processors and the limits. `get_tracer` returns a tracer that uses them."
+      - id: b
+        text: "The `Tracer`."
+        explanation: "A tracer creates spans and carries an instrumentation scope name and version. It does not own the processors."
+      - id: c
+        text: "The `BatchSpanProcessor`."
+        explanation: "A processor receives finished spans and passes them to an exporter. It does not create tracers."
+      - id: d
+        text: "The `OTLPSpanExporter`."
+        explanation: "An exporter sends spans over OTLP. It has no Resource of its own and does not create tracers."
+    correct_option: a
+    explanation: "The tracer provider is the root of the tracing SDK. It holds the Resource, the sampler, the processors and the limits."
+
+  - id: ats074-040-q02
+    type: single_choice
+    difficulty: beginner
+    learning_objective: "Explain where the parent-child relation of spans comes from"
+    source_readings:
+      - sections/section-040/module-01/course-02-span-anatomy-and-parent-child.md
+    prompt: |-
+      A service starts span `B` inside a `with` block of span `A`, using `start_as_current_span` for both. How does the SDK decide that `A` is the parent of `B`?
+    options:
+      - id: a
+        text: "It compares the start times and picks the span that started first."
+        explanation: "Time does not define the parent. Two unrelated spans can start in any order."
+      - id: b
+        text: "It reads the span that is current in the context when `B` is created."
+        explanation: "Correct. The new span takes the trace ID and the parent span ID from the current context. The relation comes from the context, not from names or times."
+      - id: c
+        text: "It matches the names of the spans."
+        explanation: "Names do not carry identity. Many spans can have the same name."
+      - id: d
+        text: "The Collector assigns parents when it receives the spans."
+        explanation: "The parent span ID is set by the SDK when the span is created, before any export."
+    correct_option: b
+    explanation: "The parent is the span that is current in the context when the new span is created."
+
+  - id: ats074-040-q03
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Explain the effect of a sampler that drops a trace on the log records of that trace"
+    source_readings:
+      - sections/section-040/module-01/course-03-processors-samplers-and-exporters.md
+      - sections/section-040/module-03/course-03-bridging-standard-logging-and-trace-correlation.md
+    prompt: |-
+      The sampler `always_off` is set on a service. A log record is written inside a span. What does the record carry, and what reaches the Collector?
+    options:
+      - id: a
+        text: "No trace ID, and no span."
+        explanation: "The span is not recorded, but it still has valid identifiers. The record copies them from the current span."
+      - id: b
+        text: "A trace ID and a span ID with the sampled flag off, and no span."
+        explanation: "Correct. The identifiers exist, so the record carries them. The trace is dropped, so no span arrives, and the IDs point to a trace that no backend has."
+      - id: c
+        text: "A trace ID, and the span is exported anyway."
+        explanation: "A dropped trace is not recorded and not exported by the span processor."
+      - id: d
+        text: "The log record is dropped together with the span."
+        explanation: "The sampler decides about spans only. The logs pipeline has no sampler, and the record is exported."
+    correct_option: b
+    explanation: "Sampling affects spans only. A record created in a dropped span still has the identifiers, and the trace is missing."
+
+  - id: ats074-040-q04
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Choose between the simple and the batch span processor"
+    source_readings:
+      - sections/section-040/module-01/course-03-processors-samplers-and-exporters.md
+    prompt: |-
+      A busy web service must not slow down its requests because of telemetry. Which span processor fits?
+    options:
+      - id: a
+        text: "`SimpleSpanProcessor`, because it exports every span immediately on the request thread."
+        explanation: "It exports on the thread that ends the span, so each request waits for the network. It fits tests, not busy services."
+      - id: b
+        text: "No processor: the exporter reads spans directly from the tracer."
+        explanation: "Spans reach an exporter only through a processor."
+      - id: c
+        text: "`BatchSpanProcessor`, because it queues spans and exports them from a background thread."
+        explanation: "Correct. The application does not wait for the network. The cost is that a full queue drops spans and a killed process loses the queued ones."
+      - id: d
+        text: "`SimpleSpanProcessor` with a larger queue."
+        explanation: "The simple processor has no queue. It exports synchronously."
+    correct_option: c
+    explanation: "The batch processor queues finished spans and exports them in the background, so request threads do not wait."
+
+  - id: ats074-040-q05
+    type: single_choice
+    difficulty: beginner
+    learning_objective: "Choose an instrument for a value that rises and falls"
+    source_readings:
+      - sections/section-040/module-02/course-01-meters-and-instruments.md
+    prompt: |-
+      A service wants to report the number of items currently waiting in a queue. Items are added and removed by the code. Which instrument is the best fit?
+    options:
+      - id: a
+        text: "`Counter`, because it counts items."
+        explanation: "A counter only increases. It cannot record a removal."
+      - id: b
+        text: "`Histogram`, because it stores many values."
+        explanation: "A histogram records the distribution of measured values, such as durations. It does not track a current size."
+      - id: c
+        text: "`Gauge` with a new value on every change."
+        explanation: "A gauge reports the current value of something that is not summed, such as a temperature. It does not add up changes."
+      - id: d
+        text: "`UpDownCounter`, because the code adds and subtracts."
+        explanation: "Correct. An `UpDownCounter` accepts positive and negative changes and sums them, so it follows a value that rises and falls."
+    correct_option: d
+    explanation: "An UpDownCounter is the additive instrument for values that go up and down."
+
+  - id: ats074-040-q06
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Distinguish cumulative from delta temporality"
+    source_readings:
+      - sections/section-040/module-02/course-02-aggregation-temporality-and-views.md
+    prompt: |-
+      A counter is exported with cumulative temporality. What does each exported data point represent?
+    options:
+      - id: a
+        text: "The total since the start of the measurement, so the value only grows between exports."
+        explanation: "Correct. A backend computes the rate from the difference between two points. A restart of the process resets the total."
+      - id: b
+        text: "Only the change since the previous export."
+        explanation: "That is delta temporality."
+      - id: c
+        text: "The current value of an external resource."
+        explanation: "That describes an observed gauge, not a cumulative sum."
+      - id: d
+        text: "The largest value seen in the last interval."
+        explanation: "The maximum is a different aggregation, not a temporality."
+    correct_option: a
+    explanation: "Cumulative points carry the running total since the start. Delta points carry only the change since the last export."
+
+  - id: ats074-040-q07
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Account for cardinality in metric attributes"
+    source_readings:
+      - sections/section-040/module-02/course-03-readers-export-interval-cardinality-and-exemplars.md
+    prompt: |-
+      A developer adds the attribute `user.id` to a request counter. The service has two million users. What is the main problem, and what is a fix?
+    options:
+      - id: a
+        text: "The counter becomes a gauge. Fix: use a histogram."
+        explanation: "Attributes never change the instrument type."
+      - id: b
+        text: "The metric reader exports too often. Fix: raise the export interval."
+        explanation: "The interval changes how often data leaves, not how many series exist."
+      - id: c
+        text: "Each unique value creates a separate time series, so memory and storage grow without limit. Fix: drop the attribute, for example with a view, and put the user ID in logs or traces."
+        explanation: "Correct. Identifiers with many values belong in logs and traces. A view can remove the attribute from the metric."
+      - id: d
+        text: "The Collector rejects attributes with more than 128 characters. Fix: shorten the value."
+        explanation: "Length is not the problem. The number of distinct values is."
+    correct_option: c
+    explanation: "A high-cardinality attribute creates one series per value. Remove it from metrics and keep the identifier in logs or traces."
+
+  - id: ats074-040-q08
+    type: single_choice
+    difficulty: beginner
+    learning_objective: "Filter log records by severity"
+    source_readings:
+      - sections/section-040/module-03/course-01-log-records-severity-and-attributes.md
+    prompt: |-
+      A backend must show every record that is an error or worse, from services written in different languages. Which field should the filter use?
+    options:
+      - id: a
+        text: "`SeverityText` equal to `ERROR`."
+        explanation: "The text is free-form and differs between libraries, for example `WARNING` and `WARN`."
+      - id: b
+        text: "`SeverityNumber` of 17 or more."
+        explanation: "Correct. The number has one meaning in every library: 17 to 20 is ERROR and 21 to 24 is FATAL."
+      - id: c
+        text: "`Body` containing the word error."
+        explanation: "The body is free text and is not a reliable filter."
+      - id: d
+        text: "`ObservedTimestamp` greater than `Timestamp`."
+        explanation: "The two timestamps say when the event happened and when it was seen. They do not say how serious it is."
+    correct_option: b
+    explanation: "Filter on the severity number: 17 to 20 is ERROR and 21 to 24 is FATAL."
+
+  - id: ats074-040-q09
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Describe where a log record can be changed before export"
+    source_readings:
+      - sections/section-040/module-03/course-02-logger-provider-processors-and-exporters.md
+      - sections/section-040/module-03/course-04-events-retention-and-sensitive-data.md
+    prompt: |-
+      A team must remove the attribute `customer.email` from every log record before it leaves the process. Where does the SDK allow this change?
+    options:
+      - id: a
+        text: "In the exporter, because it receives the records."
+        explanation: "An exporter receives read-only records and cannot change them."
+      - id: b
+        text: "In a `LogRecordProcessor`, in `on_emit`, registered before the batch processor."
+        explanation: "Correct. The processor receives a writable record, and it must run before the batch processor queues the record for export."
+      - id: c
+        text: "In the `LoggerProvider` constructor, with an attribute filter."
+        explanation: "The provider holds the Resource, the processors and the limits. It has no filter for attribute names."
+      - id: d
+        text: "In the `Logger`, by calling `emit` a second time."
+        explanation: "A second `emit` creates another record. It does not change the first one."
+    correct_option: b
+    explanation: "A log record processor sees the writable record. Register the redaction processor before the batch processor."
+
+  - id: ats074-040-q10
+    type: single_choice
+    difficulty: advanced
+    learning_objective: "Explain why a log record has no trace ID"
+    source_readings:
+      - sections/section-040/module-03/course-03-bridging-standard-logging-and-trace-correlation.md
+    prompt: |-
+      A service writes an ERROR record from a thread that the code started by hand, while a request span is current on the request thread. The record has an empty trace ID. Why?
+    options:
+      - id: a
+        text: "The standard `logging` handler removes trace IDs from ERROR records."
+        explanation: "The handler copies the identifiers from the current context for every severity."
+      - id: b
+        text: "The batch processor drops the identifiers to save space."
+        explanation: "Processors do not remove identifiers."
+      - id: c
+        text: "The Collector clears the trace ID of records that have no span in the same batch."
+        explanation: "The Collector does not clear identifiers."
+      - id: d
+        text: "The current context is stored in a context variable, and a new thread does not inherit it."
+        explanation: "Correct. The record reads the span from the current context. In a new thread there is none. Copying the context with `contextvars.copy_context()` fixes it."
+    correct_option: d
+    explanation: "A record gets its trace ID from the current context, and a hand-started thread does not receive that context."
+
+  - id: ats074-040-q11
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Explain why one Resource gives all signals the same identity"
+    source_readings:
+      - sections/section-040/module-03/course-01-log-records-severity-and-attributes.md
+      - sections/section-040/module-01/course-01-tracer-provider-resource-and-tracer.md
+    prompt: |-
+      A program creates `Resource.create({})` once and passes it to the tracer provider, the meter provider and the logger provider. `OTEL_SERVICE_NAME=shuttle` is set. What does the Collector see?
+    options:
+      - id: a
+        text: "Spans, metrics and log records all carry `service.name: shuttle` in their Resource."
+        explanation: "Correct. The Resource describes the producer, and all three providers attach the same one to their data."
+      - id: b
+        text: "Only spans carry the service name, because metrics and logs have no Resource."
+        explanation: "Every signal has a Resource. The data model puts it above the scope in all three."
+      - id: c
+        text: "Each signal gets its own `unknown_service` name unless set per provider."
+        explanation: "The environment variable is read when the Resource is created, and the same Resource is shared."
+      - id: d
+        text: "The service name is added by the Collector."
+        explanation: "The SDK adds it. The Collector only receives it."
+    correct_option: a
+    explanation: "The Resource is built once from the environment and shared, so every signal carries the same service identity."
+
+  - id: ats074-040-q12
+    type: single_choice
+    difficulty: advanced
+    learning_objective: "Interpret an empty log search"
+    source_readings:
+      - sections/section-040/module-03/course-04-events-retention-and-sensitive-data.md
+    prompt: |-
+      An engineer searches the log backend for a `shuttle.docked` event from three days ago and finds nothing. What can the engineer conclude?
+    options:
+      - id: a
+        text: "The event did not happen."
+        explanation: "An empty result does not prove that. Retention, filters, a full queue or a killed process can remove records."
+      - id: b
+        text: "The service did not log at INFO level."
+        explanation: "The level is one possible reason, but the empty result alone does not show it."
+      - id: c
+        text: "Nothing certain: the record may have been dropped, filtered or deleted by retention."
+        explanation: "Correct. The SDK stores nothing, so the answer depends on the queue, the Collector filters and the retention of each system that held the record."
+      - id: d
+        text: "The Collector is down."
+        explanation: "The Collector being down is one possible reason. It is not the only one, and it is not shown by an empty search."
+    correct_option: c
+    explanation: "Queues, filters, killed processes and retention can all remove records, so a missing record is not proof of absence."

@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Tracing With The OpenTelemetry Python SDK (PLAYGROUND) - playground
+# environment. A clean sandbox: it starts an OpenTelemetry Collector with the
+# `debug` exporter and a Python application (`shuttle`) that creates spans
+# with the OpenTelemetry SDK. No task, no grading, no `astrona submit`.
+# Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-playground-040-01
+  docs:
+    guide: docs/overview.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+# What the learner starts with: the Collector and the shuttle application,
+# both in the starfleet namespace. The shuttle installs the SDK with pip on
+# start, so its pod needs a few minutes before the first span appears.
+bootstrap:
+  manifests:
+    - name: starfleet
+      type: file
+      source: manifests/starfleet.yaml
+  waitFor:
+    - resource: deploy/collector
+      namespace: starfleet
+    - resource: deploy/shuttle
+      namespace: starfleet
+
+teardown:
+  keepCluster: false

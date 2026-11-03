@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Context, Boundaries And W3C Trace Context (PLAYGROUND). Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-playground-060-01
+  docs:
+    guide: docs/overview.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+# Starting state: collector, probe and shuttle in starfleet. The pods install the
+# OpenTelemetry Python SDK at start, so they need up to a few minutes.
+bootstrap:
+  init:
+    - name: seed-cluster
+      description: Create the collector, the probe and the shuttle and wait until they run
+      type: file
+      source: bootstrap/01-seed-cluster.sh
+
+teardown:
+  keepCluster: false

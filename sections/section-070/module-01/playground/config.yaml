@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Language Instrumentation Agents (PLAYGROUND) — playground environment.
+# A clean sandbox: a Collector that prints everything it receives, the
+# zero-code scout app and a client. No task, no grading, no `astrona submit`.
+# Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-playground-070-01
+  docs:
+    guide: docs/overview.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+      - curlimages/curl:8.22.0
+
+bootstrap:
+  manifests:
+    - name: starfleet
+      type: file
+      source: manifests/starfleet.yaml
+  waitFor:
+    - resource: deploy/collector
+      namespace: starfleet
+    - resource: deploy/scout
+      namespace: starfleet
+    - resource: deploy/drifter
+      namespace: starfleet
+
+teardown:
+  keepCluster: false

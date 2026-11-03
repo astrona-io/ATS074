@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Fix Metric And Log Pipelines (LAB). Graded against the live cluster. Built
+# untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-lab-050-02
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+# Starting state: the Collector and the shuttle service. The metric reader
+# exports every 120 seconds, no view is set, the temporality is cumulative and
+# the log record queue holds two records.
+bootstrap:
+  init:
+    - name: seed-cluster
+      description: Start the Collector and the shuttle service with a slow metric reader and a tiny log queue
+      type: file
+      source: bootstrap/01-seed-cluster.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
+    - name: wait-for-settled
+      description: Wait until the new shuttle pod is ready and has exported for a while
+      type: file
+      source: testing/wait-for-settled.sh
+
+validation:
+  scripts:
+    - name: workloads-running
+      description: collector and shuttle are available with their original image and script
+      type: file
+      source: validation/validate-workloads-running.sh
+      hint: Change only the environment of the shuttle Deployment. A new pod needs a few minutes to install the SDK.
+    - name: metric-reader
+      description: shuttle exports delta metrics at least every 10 seconds
+      type: file
+      source: validation/validate-metric-reader.sh
+      hint: Set OTEL_METRIC_EXPORT_INTERVAL (milliseconds) and OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE=delta.
+    - name: views
+      description: Views keep shuttle.route only, drop shuttle.fuel.used and set histogram buckets
+      type: file
+      source: validation/validate-views.sh
+      hint: SHUTTLE_VIEWS takes a comma list of keys, buckets and drop-fuel. Check the effect in the Collector log, not only in the Deployment.
+    - name: log-processor
+      description: Log records are queued in a 2048 record queue and arrive with trace IDs
+      type: file
+      source: validation/validate-log-processor.sh
+      hint: Set OTEL_BLRP_MAX_QUEUE_SIZE to at least 2048 and keep OTEL_BLRP_MAX_EXPORT_BATCH_SIZE at 512 or less.
+
+teardown:
+  keepCluster: false

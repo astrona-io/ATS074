@@ -1,0 +1,20 @@
+# Reference solution: the views ConfigMap. The environment variables are set
+# by apply.sh with kubectl set env.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shuttle-views
+  namespace: starfleet
+data:
+  views.py: |
+    from opentelemetry.sdk.metrics.view import ExplicitBucketHistogramAggregation, View
+
+    VIEWS = [
+        View(
+            instrument_name="shuttle.request.duration",
+            attribute_keys={"http.route", "http.response.status_code"},
+            aggregation=ExplicitBucketHistogramAggregation(
+                boundaries=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0)
+            ),
+        ),
+    ]

@@ -1,0 +1,69 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Fix The Resource Of A Service (LAB). Graded against the live cluster. Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-lab-010-01
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+# Starting state: the Collector and the shuttle service. The shuttle has no service name and carries a request identifier as a resource attribute.
+bootstrap:
+  init:
+    - name: seed-cluster
+      description: Create the Collector and the shuttle service
+      type: file
+      source: bootstrap/01-seed-cluster.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
+    - name: wait-for-settled
+      description: Wait until the shuttle rollout is complete
+      type: file
+      source: testing/wait-for-settled.sh
+
+validation:
+  scripts:
+    - name: service-name
+      description: The effective service.name of the shuttle is shuttle
+      type: file
+      source: validation/validate-service-name.sh
+      hint: The service name comes from OTEL_SERVICE_NAME, or from service.name in OTEL_RESOURCE_ATTRIBUTES when OTEL_SERVICE_NAME is not set.
+    - name: resource-attributes
+      description: The resource has service.namespace, service.version and deployment.environment.name
+      type: file
+      source: validation/validate-resource-attributes.sh
+      hint: Put the three attributes in OTEL_RESOURCE_ATTRIBUTES as comma-separated key=value pairs without spaces. Keep service.version=1.0.0.
+    - name: no-request-id
+      description: The resource has no request.id attribute
+      type: file
+      source: validation/validate-no-request-id.sh
+      hint: A request identifier changes with every request. Remove it from OTEL_RESOURCE_ATTRIBUTES.
+    - name: collector-resource
+      description: The Collector receives telemetry with the corrected resource
+      type: file
+      source: validation/validate-collector-resource.sh
+      hint: Wait for the new pod. The check reads the Collector log of the last 30 seconds, so it needs the rollout to be complete.
+    - name: workloads-running
+      description: The Collector and the shuttle are available with their original images
+      type: file
+      source: validation/validate-workloads-running.sh
+      hint: Change the environment variables only. Do not delete or replace the Deployments.
+
+teardown:
+  keepCluster: false

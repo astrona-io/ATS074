@@ -1,0 +1,84 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Repair The SDK Pipelines Of A Service (CAPSTONE LAB). Graded against the
+# live cluster. Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-capstone-050
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+# Starting state: the Collector and the shuttle service. The exporter points
+# at port 4319 (nothing listens there), the sampler is always_off, both batch
+# queues hold two items, the metric reader exports every 120 seconds, the
+# temporality is cumulative, no view is set, the script exits on SIGTERM
+# without flushing and the grace period is one second.
+bootstrap:
+  init:
+    - name: seed-cluster
+      description: Start the Collector and the shuttle service with a broken telemetry pipeline
+      type: file
+      source: bootstrap/01-seed-cluster.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
+    - name: wait-for-settled
+      description: Wait until the new shuttle pod is ready and has exported for a while
+      type: file
+      source: testing/wait-for-settled.sh
+
+validation:
+  scripts:
+    - name: workloads-running
+      description: collector and shuttle are available with their original image and script
+      type: file
+      source: validation/validate-workloads-running.sh
+      hint: Change only the environment and the grace period of the shuttle Deployment. A new pod needs a few minutes to install the SDK.
+    - name: exporter-endpoint
+      description: shuttle sends OTLP/HTTP to port 4318 of the collector Service without export errors
+      type: file
+      source: validation/validate-endpoint.sh
+      hint: Read the shuttle pod log. The OTLP/HTTP receiver listens on 4318, and 4317 is gRPC.
+    - name: trace-pipeline
+      description: Parent-based ratio sampler, batching span processor and spans at the Collector
+      type: file
+      source: validation/validate-traces.sh
+      hint: Use parentbased_traceidratio with a ratio from 0.1 to 0.5, SHUTTLE_SPAN_PROCESSOR=batch, a queue of at least 2048, a batch size of at most 512 and a delay of at most 5000 ms.
+    - name: metric-pipeline
+      description: Delta metrics every 10 seconds or faster, through the keys and drop-fuel views
+      type: file
+      source: validation/validate-metrics.sh
+      hint: Set OTEL_METRIC_EXPORT_INTERVAL, the delta temporality preference and SHUTTLE_VIEWS=keys,drop-fuel. Check the effect in the Collector log.
+    - name: log-pipeline
+      description: Log records are queued in a 2048 record queue and arrive with trace IDs
+      type: file
+      source: validation/validate-logs.sh
+      hint: Set OTEL_BLRP_MAX_QUEUE_SIZE to at least 2048 and OTEL_BLRP_MAX_EXPORT_BATCH_SIZE to 512 or less.
+    - name: shutdown-path
+      description: shuttle shuts down its providers on SIGTERM and has a 30 second grace period
+      type: file
+      source: validation/validate-shutdown-path.sh
+      hint: Set SHUTTLE_ON_TERM=shutdown and spec.template.spec.terminationGracePeriodSeconds to 30.
+    - name: pipeline-evidence
+      description: The ConfigMap pipeline-evidence repeats the configuration the running pod uses
+      type: file
+      source: validation/validate-pipeline-evidence.sh
+      hint: Create ConfigMap pipeline-evidence in starfleet with the keys endpoint, sampler, sampler-arg, metric-export-interval-ms and observed-at. Copy the values from the running pod, not from memory.
+
+teardown:
+  keepCluster: false

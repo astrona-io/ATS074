@@ -1,0 +1,68 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Tune Metric Export, Temporality And Views (LAB). Graded against the live
+# cluster: the Deployment settings, the views ConfigMap and the metrics that
+# the Collector prints. Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-lab-040-02
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+# Starting state: the Collector and the shuttle program with a 60 second
+# export interval, cumulative temporality, an empty views file and an
+# unbounded request.id attribute on the histogram.
+bootstrap:
+  init:
+    - name: seed-cluster
+      description: Create the starfleet namespace, the Collector and the shuttle program
+      type: file
+      source: bootstrap/01-seed-cluster.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
+    - name: wait-for-settled
+      description: Wait until the old shuttle pod is gone
+      type: file
+      source: testing/wait-for-settled.sh
+
+validation:
+  scripts:
+    - name: export-settings
+      description: The shuttle Deployment exports every 10 seconds or faster and asks for delta temporality
+      type: file
+      source: validation/validate-export-settings.sh
+      hint: Set OTEL_METRIC_EXPORT_INTERVAL to 10000 and OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE to delta on deploy/shuttle with kubectl set env.
+    - name: views-configured
+      description: The shuttle-views ConfigMap defines a View for shuttle.request.duration that removes request.id and sets explicit buckets
+      type: file
+      source: validation/validate-views-configured.sh
+      hint: VIEWS must hold a View with instrument_name shuttle.request.duration, attribute_keys with http.route and http.response.status_code, and an ExplicitBucketHistogramAggregation.
+    - name: delta-metrics-live
+      description: The Collector receives shuttle.requests and shuttle.request.duration with delta temporality, and the queue depth stays cumulative
+      type: file
+      source: validation/validate-delta-metrics-live.sh
+      hint: Restart the Deployment after the change, wait for the new pod to export, and read the Collector log with kubectl logs.
+    - name: histogram-view-live
+      description: The live histogram has no request.id attribute and uses the new bucket boundaries
+      type: file
+      source: validation/validate-histogram-view-live.sh
+      hint: The program reads views.py only at start-up, so run kubectl rollout restart after you change the ConfigMap.
+
+teardown:
+  keepCluster: false

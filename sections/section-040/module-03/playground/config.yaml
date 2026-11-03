@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Logs: Records, The Logs SDK And Trace Correlation (PLAYGROUND) — playground environment.
+# A clean sandbox: it starts the shuttle (Python, OpenTelemetry SDK) and the
+# collector (debug exporter), then stays running for free exploration. No task,
+# no grading, no `astrona submit`. Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-playground-040-03
+  docs:
+    guide: docs/overview.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+# What the learner starts with: the collector, and the shuttle with a working
+# logs pipeline (service name set, INFO level, no payload logging, records
+# written inside a span). The shuttle installs the SDK with pip when it starts.
+bootstrap:
+  manifests:
+    - name: starfleet
+      type: file
+      source: manifests/starfleet.yaml
+  waitFor:
+    - resource: deploy/collector
+      namespace: starfleet
+    - resource: deploy/shuttle
+      namespace: starfleet
+
+teardown:
+  keepCluster: false

@@ -5,14 +5,19 @@ exam_objectives:
 ---
 # Summary
 
-A trace connects spans that describe operations in one distributed request. Context propagation allows participating services to preserve that relationship, while span timing and attributes help locate expensive or failed work.
+OpenTelemetry splits tracing into an API and an SDK. Application and library code calls the API, which does nothing until an SDK is registered. The SDK provides the `TracerProvider`, which holds the resource, the sampler and the span processors. The resource describes the service that produces the telemetry, and its `service.name` comes from `OTEL_SERVICE_NAME` or `OTEL_RESOURCE_ATTRIBUTES`. A tracer names the instrumentation scope that creates spans.
 
-Missing instrumentation, sampling and propagation errors can leave an incomplete picture. Concurrent spans must be interpreted by their timing and relationships rather than summed blindly, and trace attributes need controlled cost and confidentiality.
+A span is one timed operation. It carries a trace ID shared by the whole trace, its own span ID, the span ID of its parent, a name, a kind, start and end times, a status, attributes, events and links. The parent comes from the current context: the span that is active when a new span starts becomes its parent, and a span with no active parent starts a new trace. Status belongs to one span, a failed child does not mark its parent, and a link relates two spans without making either a parent of the other. An exception that leaves a span sets the error status and adds an exception event unless the code switches that off.
 
-Metric types describe different measurement contracts. Counters accumulate events, gauges represent changing state, and distributions preserve information about observed values such as duration.
+The sampler decides once, when a span is created, whether to keep it. A parent-based sampler lets a trace stay whole, and a ratio of zero keeps nothing. The batch span processor queues finished spans, exports them on a schedule and drops them when the queue is full. The exporter sends the spans over OTLP to the endpoint in the environment. Any of these stages can remove spans without an error in the application, so a missing span is checked stage by stage: sampling, processing, exporting and the Collector.
 
-Queries must respect those contracts and the selected population. Scraped samples are bounded observations, while labels determine identity and cost; a useful metric is a clear answer to an operational question rather than an arbitrary number with a dashboard.
+Key facts:
 
-Metrics describe numerical behavior across time, while logs and events preserve individual observations and their context. Structured identity and timestamps make records useful for correlating symptoms with activity.
+- The API records nothing without a registered SDK.
+- `OTEL_SERVICE_NAME` overrides `service.name` in `OTEL_RESOURCE_ATTRIBUTES`.
+- The default sampler is `parentbased_always_on`.
+- A span with an empty parent ID is the root of its trace.
+- Only ended spans are exported.
+- Status values are `Unset`, `Ok` and `Error`.
 
-Collection scope, sampling and retention limit the conclusions supported by a search. Protect sensitive fields and preserve enough context to investigate without treating every log line as a complete or trustworthy account.
+<!-- astrona:playground:destroy -->

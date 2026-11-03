@@ -1,0 +1,72 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Repair A Logs Pipeline (LAB). Graded against the live cluster. Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-lab-040-03
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+# Starting state: the collector, and a shuttle with four problems in its logs
+# pipeline: no service name, DEBUG level, payload logging on, and the error
+# record written after the span has ended. The failures are left in place on
+# purpose.
+bootstrap:
+  init:
+    - name: seed-cluster
+      description: Create the collector and the shuttle with the failing logs settings
+      type: file
+      source: bootstrap/01-seed-cluster.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
+    - name: wait-for-settled
+      description: Wait until the old shuttle pod is gone
+      type: file
+      source: testing/wait-for-settled.sh
+
+validation:
+  scripts:
+    - name: workloads-running
+      description: collector and shuttle are available with their original images and code
+      type: file
+      source: validation/validate-workloads-running.sh
+      hint: Fix the settings. Do not delete, scale down or replace the Deployments, and do not rewrite the application code.
+    - name: resource-identity
+      description: The Resource names the service shuttle and the environment training, and fresh log records carry both
+      type: file
+      source: validation/validate-resource-identity.sh
+      hint: Set OTEL_SERVICE_NAME and OTEL_RESOURCE_ATTRIBUTES on the shuttle Deployment, then wait for the new pod to export.
+    - name: log-level
+      description: The shuttle logs at INFO or above and no fresh DEBUG record reaches the collector
+      type: file
+      source: validation/validate-log-level.sh
+      hint: The level is an application setting named SHUTTLE_LOG_LEVEL. A record below the level is never created.
+    - name: no-sensitive-data
+      description: No fresh log record carries the authorization header or the e-mail address
+      type: file
+      source: validation/validate-no-sensitive-data.sh
+      hint: Payload logging is a troubleshooting switch on the Deployment. Turn it off and wait for the new pod.
+    - name: trace-correlation
+      description: Every fresh ERROR record carries a trace ID
+      type: file
+      source: validation/validate-trace-correlation.sh
+      hint: A record gets its trace ID only if it is written while a span is current. Look at the settings of the shuttle for a switch about the span.
+
+teardown:
+  keepCluster: false

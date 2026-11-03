@@ -1,0 +1,77 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Repair A Misconfigured SDK Pipeline (LAB). Graded against the live cluster.
+# Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-lab-020-02
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+# Starting state: the Collector and the shuttle service. The exporter points at
+# the gRPC port while it speaks HTTP, the span processor is the simple one, the
+# sampler is always_off and the custom crew-tag processor is not enabled.
+bootstrap:
+  init:
+    - name: seed-cluster
+      description: Create the Collector and the misconfigured shuttle service
+      type: file
+      source: bootstrap/01-seed-cluster.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
+    - name: wait-for-settled
+      description: Wait until the new pod exports spans with the custom attribute
+      type: file
+      source: testing/wait-for-settled.sh
+
+validation:
+  scripts:
+    - name: export-path
+      description: The exporter endpoint uses the HTTP port 4318 and metrics reach the Collector
+      type: file
+      source: validation/validate-export-path.sh
+      hint: The exporter speaks HTTP with protobuf. The Collector receives HTTP on port 4318 and gRPC on port 4317.
+    - name: processors
+      description: The running pod uses crew-tag and then batch, with a two second batch delay
+      type: file
+      source: validation/validate-processors.sh
+      hint: The application reads SHUTTLE_SPAN_PROCESSORS as a comma-separated list. The batch delay is OTEL_BSP_SCHEDULE_DELAY in milliseconds.
+    - name: sampler
+      description: A parent-based sampler runs and spans reach the Collector
+      type: file
+      source: validation/validate-sampler.sh
+      hint: Use a sampler whose name starts with parentbased_ that records every root trace, or remove the variable to use the default.
+    - name: custom-attribute
+      description: Spans at the Collector carry starfleet.crew.size with the value 4
+      type: file
+      source: validation/validate-custom-attribute.sh
+      hint: The attribute comes from the custom processor. It is added in on_start, so only spans that start after the restart have it.
+    - name: library-unchanged
+      description: The application code and the image were not changed
+      type: file
+      source: validation/validate-library-unchanged.sh
+      hint: Fix the configuration only. Do not edit the ConfigMap shuttle-app and do not change the image.
+    - name: evidence-recorded
+      description: The ConfigMap pipeline-evidence matches the pod log and the Collector log
+      type: file
+      source: validation/validate-evidence-recorded.sh
+      hint: Read processors from the pipeline line of the shuttle log, the port from the endpoint and the crew size from the Collector log.
+
+teardown:
+  keepCluster: false

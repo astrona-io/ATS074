@@ -1,0 +1,74 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Capstone: Agents End To End (LAB). Graded against the live cluster:
+# Deployment environment, the DaemonSet spec, the ConfigMap agent-config and the
+# gateway Collector log. Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-capstone-070
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+      - curlimages/curl:8.22.0
+
+# Starting state: zero-code scout that sends straight to the gateway with a
+# disabled Flask instrumentation and no identity; an agent DaemonSet with only
+# batch and a hostPath mount of /var/log it does not need.
+bootstrap:
+  init:
+    - name: seed-cluster
+      description: Create the gateway, the agent, scout and the client
+      type: file
+      source: bootstrap/01-seed-cluster.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
+    - name: wait-for-settled
+      description: Wait until the gateway log shows enriched scout spans
+      type: file
+      source: testing/wait-for-settled.sh
+
+validation:
+  scripts:
+    - name: scout-agent-configured
+      description: scout sends to the agent, is instrumented, has an identity and excludes health checks
+      type: file
+      source: validation/validate-scout-agent-configured.sh
+      hint: Four settings on the scout Deployment. Use kubectl set env, and remove OTEL_PYTHON_DISABLED_INSTRUMENTATIONS.
+    - name: agent-processors
+      description: The agent config orders memory_limiter, resourcedetection and batch
+      type: file
+      source: validation/validate-agent-processors.sh
+      hint: Write the processors list of both pipelines on one line, memory_limiter first and batch last.
+    - name: agent-least-authority
+      description: The agent pod spec has no hostPath volume and no privileged container
+      type: file
+      source: validation/validate-agent-least-authority.sh
+      hint: The agent only receives OTLP. Remove the hostlogs volume and its volumeMount from the DaemonSet.
+    - name: gateway-receives-enriched-telemetry
+      description: Fresh scout spans at the gateway are enriched by the agent and have no health check spans
+      type: file
+      source: validation/validate-gateway-receives-enriched-telemetry.sh
+      hint: Restart the agent DaemonSet and the scout pod must have been replaced. Wait for new telemetry, up to about two minutes.
+    - name: workloads-running
+      description: Gateway, agent, scout and drifter are available and scout is still zero-code
+      type: file
+      source: validation/validate-workloads-running.sh
+      hint: Do not edit gateway-config or the scout ConfigMap.
+
+teardown:
+  keepCluster: false

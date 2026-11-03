@@ -1,0 +1,11 @@
+# Reference solution for the capstone: the written record. The environment
+# changes are applied by apply.sh with `kubectl set env`.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: data-model-record
+  namespace: starfleet
+data:
+  service-identity: "service.name=shuttle service.namespace=starfleet service.version=1.0.0 deployment.environment.name=training"
+  temporality: "delta"
+  duration-unit: "s"

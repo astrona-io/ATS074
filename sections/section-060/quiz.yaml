@@ -1,0 +1,301 @@
+# Knowledge check for section 060. Listed in astrona.yaml as a `type: quiz` entry after the capstone lab.
+schema_version: 1
+kind: question_bank
+id: ats074-060
+course_id: ATS074
+exam_code: OTCA
+status: draft
+provenance: Original practice material written for this course; not official exam questions.
+scope:
+  type: section
+  id: section-060
+  title: "Context Propagation"
+questions:
+  - id: ats074-060-q01
+    type: single_choice
+    difficulty: beginner
+    learning_objective: "Explain what a Context is and how an immutable Context changes"
+    source_readings:
+      - sections/section-060/module-01/course-01-the-context-object-and-the-active-context.md
+    prompt: |-
+      A service calls `baggage.set_baggage("mission", "survey")` without passing a context and ignores the return value. A later call to `baggage.get_all()` in the same thread returns nothing. Why?
+    options:
+      - id: a
+        text: "The baggage API only works after the SDK is installed."
+        explanation: "The API works without the SDK. The cause is different."
+      - id: b
+        text: "A Context is immutable. The function returns a new Context, and the code never attached it, so the active context did not change."
+        explanation: "Correct. Set functions return a new Context. The active context changes only when code calls `context.attach` with it."
+      - id: c
+        text: "Baggage entries expire after one second."
+        explanation: "Baggage has no expiry time."
+      - id: d
+        text: "`get_all` reads only the baggage that arrived in an HTTP header."
+        explanation: "`get_all` reads the baggage of the Context it is given or of the active context, whatever its origin."
+    correct_option: b
+    explanation: "A Context is immutable. `set_baggage` returns a new Context, and the active context changes only after `context.attach`."
+
+  - id: ats074-060-q02
+    type: single_choice
+    difficulty: beginner
+    learning_objective: "Describe how a new span chooses its parent from the Context"
+    source_readings:
+      - sections/section-060/module-01/course-01-the-context-object-and-the-active-context.md
+    prompt: |-
+      Code calls `tracer.start_as_current_span("work")` in a request handler that has no span in the active context. What does the SDK create?
+    options:
+      - id: a
+        text: "A span that fails with an error, because it has no parent."
+        explanation: "Starting a span with no parent is valid and raises no error."
+      - id: b
+        text: "A root span with a new trace ID and no parent span ID."
+        explanation: "Correct. The tracer finds no valid span in the Context, so it creates a new trace ID and a root span."
+      - id: c
+        text: "A span that takes the trace ID of the most recent span the process created."
+        explanation: "The SDK reads the parent only from the Context, never from earlier spans."
+      - id: d
+        text: "A span with a zero trace ID that the sampler drops."
+        explanation: "A new span gets a valid random trace ID."
+    correct_option: b
+    explanation: "With no span in the Context, the tracer creates a new trace ID and the span is a root span."
+
+  - id: ats074-060-q03
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Carry a Context across a thread boundary"
+    source_readings:
+      - sections/section-060/module-01/course-02-keeping-context-across-threads-and-asynchronous-work.md
+    prompt: |-
+      A request handler submits a function to a `ThreadPoolExecutor`. The function starts a span, and the span appears as a separate one-span trace, while the request succeeds. What is the correct repair?
+    options:
+      - id: a
+        text: "Capture `context.get_current()` in the handler, pass it to the function, call `context.attach` there and `context.detach` in a `finally` block."
+        explanation: "Correct. A pool thread starts with its own, empty active context, so the code must move the Context on purpose."
+      - id: b
+        text: "Increase the size of the thread pool."
+        explanation: "The size of the pool does not change the active context."
+      - id: c
+        text: "Set `OTEL_PROPAGATORS=tracecontext` on the process."
+        explanation: "Propagators work at process boundaries, not at thread boundaries."
+      - id: d
+        text: "Call `propagate.extract` in the worker with an empty dictionary."
+        explanation: "Extracting from an empty carrier returns a Context with no span."
+    correct_option: a
+    explanation: "The active context is stored per thread, so a worker has none unless the code attaches the captured Context."
+
+  - id: ats074-060-q04
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Name the boundaries that carry the active context automatically"
+    source_readings:
+      - sections/section-060/module-01/course-02-keeping-context-across-threads-and-asynchronous-work.md
+    prompt: |-
+      Which statement about the active context in Python is correct?
+    options:
+      - id: a
+        text: "`asyncio.create_task` copies the current context into the new task, but a raw `threading.Thread` starts with an empty one."
+        explanation: "Correct. Tasks copy the context at creation. New threads do not."
+      - id: b
+        text: "A raw `threading.Thread` copies the active context of its creator."
+        explanation: "A new thread starts with an empty set of context variables."
+      - id: c
+        text: "`ThreadPoolExecutor.submit` copies the active context into the pool thread."
+        explanation: "The pool thread keeps its own context."
+      - id: d
+        text: "The active context is stored in a global variable that all threads share."
+        explanation: "It is stored per thread or task, in a `ContextVar`."
+    correct_option: a
+    explanation: "Asynchronous tasks copy the context when they are created. Raw threads and executor threads do not."
+
+  - id: ats074-060-q05
+    type: single_choice
+    difficulty: beginner
+    learning_objective: "Read a traceparent header"
+    source_readings:
+      - sections/section-060/module-01/course-03-the-w3c-traceparent-and-tracestate-headers.md
+    prompt: |-
+      A service receives `traceparent: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01`. Which description is correct?
+    options:
+      - id: a
+        text: "The trace ID is `00f067aa0ba902b7` and the sampled flag is set."
+        explanation: "The trace ID is the 32-character second field."
+      - id: b
+        text: "The trace ID is `4bf92f3577b34da6a3ce929d0e0e4736`, `00f067aa0ba902b7` is the span ID of the sender, and the sampled flag is set."
+        explanation: "Correct. The fields are version, trace ID, the sender span ID (named parent-id) and the flags. The flag `01` means sampled."
+      - id: c
+        text: "`00f067aa0ba902b7` is the ID of the sender's parent span, and the trace is not sampled."
+        explanation: "The parent-id names the sender span itself, and `01` means sampled."
+      - id: d
+        text: "The header is invalid because the version is `00`."
+        explanation: "`00` is the version that exists today."
+    correct_option: b
+    explanation: "The fields are version, trace ID, the span ID of the sender, and the flags, where bit 0 is the sampled flag."
+
+  - id: ats074-060-q06
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Explain the behaviour of a receiver that gets an invalid traceparent"
+    source_readings:
+      - sections/section-060/module-01/course-03-the-w3c-traceparent-and-tracestate-headers.md
+    prompt: |-
+      A client sends `traceparent` with a trace ID of 30 hexadecimal characters. What does an OpenTelemetry receiver with the `tracecontext` propagator do?
+    options:
+      - id: a
+        text: "It rejects the request with an HTTP 400 status."
+        explanation: "Propagators do not fail requests."
+      - id: b
+        text: "It ignores the header and its server span starts a new trace."
+        explanation: "Correct. An invalid header is ignored, so the span is a root span."
+      - id: c
+        text: "It pads the trace ID with zeros and continues the trace."
+        explanation: "The propagator does not repair a value."
+      - id: d
+        text: "It copies the value into a span attribute and continues the trace."
+        explanation: "The invalid value is not used."
+    correct_option: b
+    explanation: "An invalid header is ignored without an error, and the receiver starts a new trace."
+
+  - id: ats074-060-q07
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Choose propagators with OTEL_PROPAGATORS"
+    source_readings:
+      - sections/section-060/module-02/course-01-propagators-inject-extract-and-otel-propagators.md
+    prompt: |-
+      The `shuttle` service sets `OTEL_PROPAGATORS=tracecontext,baggage`. The `probe` service sets `OTEL_PROPAGATORS=b3`. Requests succeed. What does the trace look like?
+    options:
+      - id: a
+        text: "One trace, because both services use the same SDK."
+        explanation: "The header format must match, not the SDK."
+      - id: b
+        text: "Two traces. The `shuttle` writes `traceparent` and `baggage`, and the `probe` reads only `b3`, so it starts a new trace."
+        explanation: "Correct. The receiver list has no propagator that reads what the sender wrote."
+      - id: c
+        text: "One trace, because `b3` is a superset of `tracecontext`."
+        explanation: "The `b3` format uses its own headers."
+      - id: d
+        text: "The `probe` fails at start because the formats differ."
+        explanation: "The services do not check each other. Each one starts from its own variable."
+    correct_option: b
+    explanation: "Sender and receiver choose their lists separately, and a trace continues only when they share a format."
+
+  - id: ats074-060-q08
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "State the default of OTEL_PROPAGATORS and the effect of none"
+    source_readings:
+      - sections/section-060/module-02/course-01-propagators-inject-extract-and-otel-propagators.md
+    prompt: |-
+      A service does not set `OTEL_PROPAGATORS`, and a second service sets it to `none`. What is true?
+    options:
+      - id: a
+        text: "The first service uses `tracecontext,baggage`, and the second service injects and extracts nothing."
+        explanation: "Correct. The default list is `tracecontext,baggage`, and `none` turns propagation off."
+      - id: b
+        text: "The first service has no propagation, because the variable is unset."
+        explanation: "An unset variable gives the default list."
+      - id: c
+        text: "The second service still injects `traceparent`, because it is mandatory."
+        explanation: "`none` removes all propagators."
+      - id: d
+        text: "Both services use `b3` by default."
+        explanation: "The default is the W3C formats."
+    correct_option: a
+    explanation: "The default is `tracecontext,baggage`, and `none` disables propagation."
+
+  - id: ats074-060-q09
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Name the security limits of baggage"
+    source_readings:
+      - sections/section-060/module-02/course-02-baggage-and-its-security-limits.md
+    prompt: |-
+      A team puts a user's session token in baggage so that a downstream service can see it. Which statement describes the risk?
+    options:
+      - id: a
+        text: "There is no risk, because baggage is encrypted by the SDK."
+        explanation: "Baggage is plain text in an HTTP header."
+      - id: b
+        text: "The token goes to every downstream service the request reaches, including services outside the team's control, and to any proxy that logs headers."
+        explanation: "Correct. Baggage crosses every boundary the request crosses, and nothing removes it."
+      - id: c
+        text: "The token is limited to the first downstream service."
+        explanation: "Each service that continues the request propagates the baggage further."
+      - id: d
+        text: "The token is only stored in the collector, not in the request."
+        explanation: "It travels in the request header itself."
+    correct_option: b
+    explanation: "Baggage is clear text that is sent to every downstream service, so it must not hold secrets."
+
+  - id: ats074-060-q10
+    type: single_choice
+    difficulty: intermediate
+    learning_objective: "Distinguish baggage from span attributes"
+    source_readings:
+      - sections/section-060/module-02/course-02-baggage-and-its-security-limits.md
+    prompt: |-
+      A team adds `customer-tier=gold` to baggage in the entry service and expects to filter spans by that value in the backend. The backend shows no such attribute on any span. Why?
+    options:
+      - id: a
+        text: "Baggage is never copied to span attributes automatically. Code or a configured component must copy the key."
+        explanation: "Correct. The pair exists only in the Context until something copies it."
+      - id: b
+        text: "The key `customer-tier` contains a dash, which the API does not allow."
+        explanation: "Dashes are allowed in baggage keys."
+      - id: c
+        text: "Baggage is exported only after 60 seconds."
+        explanation: "Baggage is not exported as telemetry."
+      - id: d
+        text: "The backend must enable a baggage setting first."
+        explanation: "The backend never sees baggage unless it becomes an attribute."
+    correct_option: a
+    explanation: "Baggage is not telemetry. It becomes an attribute only when code copies it, for example with an allowlist."
+
+  - id: ats074-060-q11
+    type: single_choice
+    difficulty: advanced
+    learning_objective: "Diagnose a split trace"
+    source_readings:
+      - sections/section-060/module-02/course-03-diagnosing-broken-propagation.md
+    prompt: |-
+      The `shuttle` log shows `traceparent=00-...-01` in its outgoing request. The `probe` log shows the same `traceparent` value, but its span has `remote=false` and no parent. Which step failed?
+    options:
+      - id: a
+        text: "The transport, because a proxy removed the header."
+        explanation: "The probe received the header, so the transport delivered it."
+      - id: b
+        text: "The injection in the `shuttle`."
+        explanation: "The sender wrote a valid header."
+      - id: c
+        text: "The extraction in the `probe`, for example a propagator list without `tracecontext`."
+        explanation: "Correct. The header arrived and the receiver did not build a parent from it."
+      - id: d
+        text: "The sampler of the `shuttle`."
+        explanation: "The flag is `01`, so the trace is sampled, and a sampler does not change the parent of a span."
+    correct_option: c
+    explanation: "The sender wrote the header and the receiver got it, so the extract step failed."
+
+  - id: ats074-060-q12
+    type: single_choice
+    difficulty: advanced
+    learning_objective: "Separate propagation faults from sampling decisions"
+    source_readings:
+      - sections/section-060/module-02/course-03-diagnosing-broken-propagation.md
+    prompt: |-
+      A trace is connected: the `probe` span has `remote=true` and the trace ID of the `shuttle`. The backend shows no spans for it, and the `traceparent` ends with `-00`. What is the cause?
+    options:
+      - id: a
+        text: "The caller sampled the trace out, and the parent-based sampler of the receiver follows that decision."
+        explanation: "Correct. Flag `00` means not sampled, and a parent-based sampler does not record the child. Propagation works."
+      - id: b
+        text: "The `probe` lost the header in a proxy."
+        explanation: "The probe has the trace ID, so it received the header."
+      - id: c
+        text: "The `tracestate` header is missing."
+        explanation: "A missing `tracestate` does not drop spans."
+      - id: d
+        text: "The baggage is too large."
+        explanation: "Large baggage does not affect recording."
+    correct_option: a
+    explanation: "The flag `00` is a valid header for a trace that was not sampled, so the receiver does not record its spans."
+

@@ -1,0 +1,291 @@
+# Example application for the SDK pipeline course: a collector that prints
+# everything it receives, and `shuttle`, a Python service built with the
+# OpenTelemetry SDK. Configuration of the SDK pipeline is the env of shuttle.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: starfleet
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: collector-config
+  namespace: starfleet
+data:
+  config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    exporters:
+      debug:
+        verbosity: detailed
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          exporters: [debug]
+        metrics:
+          receivers: [otlp]
+          exporters: [debug]
+        logs:
+          receivers: [otlp]
+          exporters: [debug]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: collector
+  namespace: starfleet
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: collector
+  template:
+    metadata:
+      labels:
+        app: collector
+    spec:
+      containers:
+        - name: collector
+          image: otel/opentelemetry-collector-contrib:0.164.0
+          args: ["--config=/etc/otelcol/config.yaml"]
+          ports:
+            - containerPort: 4317
+            - containerPort: 4318
+          volumeMounts:
+            - name: config
+              mountPath: /etc/otelcol
+      volumes:
+        - name: config
+          configMap:
+            name: collector-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: collector
+  namespace: starfleet
+spec:
+  selector:
+    app: collector
+  ports:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shuttle-app
+  namespace: starfleet
+data:
+  app.py: |
+    """shuttle: a small service that uses the OpenTelemetry Python SDK.
+    
+    Configuration comes from the standard OTEL_* environment variables. Four
+    variables belong to this example application only:
+      SHUTTLE_SPAN_PROCESSOR  batch (default) or simple
+      SHUTTLE_VIEWS           comma list of: keys, buckets, drop-fuel
+      SHUTTLE_ON_TERM         shutdown (default) or exit
+      SHUTTLE_LOOP_MS         pause between two requests, default 500
+    """
+    import logging
+    import os
+    import random
+    import signal
+    import sys
+    import time
+    
+    from opentelemetry import metrics, trace
+    from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
+    from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+    from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+    from opentelemetry.sdk.metrics import Counter, Histogram, MeterProvider
+    from opentelemetry.sdk.metrics.export import AggregationTemporality, PeriodicExportingMetricReader
+    from opentelemetry.sdk.metrics.view import DropAggregation, ExplicitBucketHistogramAggregation, View
+    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor
+    
+    SPAN_PROCESSOR = os.environ.get("SHUTTLE_SPAN_PROCESSOR", "batch").lower()
+    VIEW_NAMES = [name.strip() for name in os.environ.get("SHUTTLE_VIEWS", "").split(",") if name.strip()]
+    ON_TERM = os.environ.get("SHUTTLE_ON_TERM", "shutdown").lower()
+    LOOP_SECONDS = int(os.environ.get("SHUTTLE_LOOP_MS", "500")) / 1000.0
+    TEMPORALITY = os.environ.get("OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE", "cumulative").lower()
+    
+    # The resource describes this process. The SDK reads OTEL_SERVICE_NAME and
+    # OTEL_RESOURCE_ATTRIBUTES when it creates it.
+    resource = Resource.create({})
+    
+    # Traces. The TracerProvider reads OTEL_TRACES_SAMPLER and
+    # OTEL_TRACES_SAMPLER_ARG. BatchSpanProcessor reads OTEL_BSP_*.
+    tracer_provider = TracerProvider(resource=resource)
+    if SPAN_PROCESSOR == "simple":
+        tracer_provider.add_span_processor(SimpleSpanProcessor(OTLPSpanExporter()))
+    else:
+        tracer_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+    trace.set_tracer_provider(tracer_provider)
+    tracer = trace.get_tracer("shuttle")
+    
+    # Metrics. PeriodicExportingMetricReader reads OTEL_METRIC_EXPORT_INTERVAL
+    # and OTEL_METRIC_EXPORT_TIMEOUT. The temporality preference is mapped here.
+    views = []
+    if "keys" in VIEW_NAMES:
+        views.append(View(instrument_name="shuttle.requests", attribute_keys={"shuttle.route"}))
+    if "buckets" in VIEW_NAMES:
+        views.append(
+            View(
+                instrument_name="shuttle.request.duration",
+                aggregation=ExplicitBucketHistogramAggregation(boundaries=[0.05, 0.1, 0.25, 0.5, 1.0]),
+            )
+        )
+    if "drop-fuel" in VIEW_NAMES:
+        views.append(View(instrument_name="shuttle.fuel.used", aggregation=DropAggregation()))
+    
+    preferred = None
+    if TEMPORALITY == "delta":
+        preferred = {
+            Counter: AggregationTemporality.DELTA,
+            Histogram: AggregationTemporality.DELTA,
+        }
+    reader = PeriodicExportingMetricReader(OTLPMetricExporter(preferred_temporality=preferred))
+    meter_provider = MeterProvider(resource=resource, metric_readers=[reader], views=views)
+    metrics.set_meter_provider(meter_provider)
+    meter = metrics.get_meter("shuttle")
+    requests_counter = meter.create_counter("shuttle.requests", unit="{request}", description="Requests handled")
+    duration_histogram = meter.create_histogram("shuttle.request.duration", unit="s", description="Request duration")
+    fuel_counter = meter.create_counter("shuttle.fuel.used", unit="L", description="Fuel used")
+    
+    # Logs. BatchLogRecordProcessor reads OTEL_BLRP_*. The handler turns Python
+    # logging records into OpenTelemetry log records.
+    logger_provider = LoggerProvider(resource=resource)
+    logger_provider.add_log_record_processor(BatchLogRecordProcessor(OTLPLogExporter()))
+    log = logging.getLogger("shuttle")
+    log.setLevel(logging.INFO)
+    log.addHandler(LoggingHandler(level=logging.INFO, logger_provider=logger_provider))
+    log.addHandler(logging.StreamHandler(sys.stdout))
+    
+    
+    def describe(name, default="(sdk default)"):
+        return os.environ.get(name, default)
+    
+    
+    print(
+        "[shuttle] config"
+        f" sampler={describe('OTEL_TRACES_SAMPLER')}"
+        f" sampler_arg={describe('OTEL_TRACES_SAMPLER_ARG')}"
+        f" span_processor={SPAN_PROCESSOR}"
+        f" bsp_queue={describe('OTEL_BSP_MAX_QUEUE_SIZE')}"
+        f" bsp_batch={describe('OTEL_BSP_MAX_EXPORT_BATCH_SIZE')}"
+        f" bsp_delay={describe('OTEL_BSP_SCHEDULE_DELAY')}"
+        f" metric_interval={describe('OTEL_METRIC_EXPORT_INTERVAL')}"
+        f" temporality={TEMPORALITY}"
+        f" views={','.join(VIEW_NAMES) or 'none'}"
+        f" blrp_queue={describe('OTEL_BLRP_MAX_QUEUE_SIZE')}"
+        f" on_term={ON_TERM}",
+        flush=True,
+    )
+    
+    
+    def on_term(signum, frame):
+        if ON_TERM == "shutdown":
+            print("[shuttle] SIGTERM: shutting down providers", flush=True)
+            tracer_provider.shutdown()
+            meter_provider.shutdown()
+            logger_provider.shutdown()
+            print("[shuttle] shutdown complete", flush=True)
+            sys.exit(0)
+        print("[shuttle] SIGTERM: exiting without flush", flush=True)
+        os._exit(0)
+    
+    
+    signal.signal(signal.SIGTERM, on_term)
+    
+    open("/tmp/ready", "w").close()
+    
+    ROUTES = ["dock", "launch", "scan"]
+    CLIENTS = ["c1", "c2", "c3", "c4", "c5"]
+    
+    while True:
+        route = random.choice(ROUTES)
+        client = random.choice(CLIENTS)
+        started = time.time()
+        with tracer.start_as_current_span(f"shuttle.{route}", attributes={"shuttle.route": route}):
+            with tracer.start_as_current_span("shuttle.refuel"):
+                time.sleep(random.uniform(0.005, 0.03))
+            log.info("handled %s for %s", route, client)
+        elapsed = time.time() - started + random.uniform(0.0, 0.8)
+        requests_counter.add(1, {"shuttle.route": route, "shuttle.client": client})
+        duration_histogram.record(elapsed, {"shuttle.route": route})
+        fuel_counter.add(random.randint(1, 5), {"shuttle.route": route})
+        time.sleep(LOOP_SECONDS)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shuttle
+  namespace: starfleet
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: shuttle
+  template:
+    metadata:
+      labels:
+        app: shuttle
+    spec:
+      terminationGracePeriodSeconds: 1
+      containers:
+        - name: shuttle
+          image: python:3.12-slim
+          command:
+            - sh
+            - -c
+            - pip install --quiet --no-cache-dir opentelemetry-sdk==1.45.2 opentelemetry-exporter-otlp-proto-http==1.45.2 && python /app/app.py
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OTEL_SERVICE_NAME
+              value: "shuttle"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "service.namespace=starfleet,service.instance.id=$(POD_NAME)"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://collector.starfleet.svc.cluster.local:4318"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
+            - name: OTEL_TRACES_SAMPLER
+              value: "always_off"
+            - name: SHUTTLE_SPAN_PROCESSOR
+              value: "simple"
+            - name: OTEL_METRIC_EXPORT_INTERVAL
+              value: "10000"
+            - name: SHUTTLE_ON_TERM
+              value: "exit"
+          readinessProbe:
+            exec:
+              command: ["cat", "/tmp/ready"]
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 90
+          volumeMounts:
+            - name: app
+              mountPath: /app
+      volumes:
+        - name: app
+          configMap:
+            name: shuttle-app

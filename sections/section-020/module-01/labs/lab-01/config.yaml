@@ -1,0 +1,71 @@
+# yaml-language-server: $schema=https://cli.astrona.io/schema/lab-config.schema.json
+#
+# Restore Telemetry From A Silent Service (LAB). Graded against the live
+# cluster. Built untested.
+apiVersion: astrona.io/v1
+metadata:
+  name: ats-074-lab-020-01
+  docs:
+    prerequisites: prerequisites.md
+    question: question.md
+    solution: solution.md
+
+runtime:
+  type: kind
+  kind:
+    image: kindest/node:v1.35.8
+    preloadImages:
+      - python:3.12-slim
+      - otel/opentelemetry-collector-contrib:0.164.0
+
+# Starting state: the Collector and the shuttle service. The SDK of the shuttle
+# is disabled with OTEL_SDK_DISABLED=true and the service has no service name.
+bootstrap:
+  init:
+    - name: seed-cluster
+      description: Create the Collector and the silent shuttle service
+      type: file
+      source: bootstrap/01-seed-cluster.sh
+
+# Applied only by `astrona test`: the reference solution.
+testing:
+  init:
+    - name: apply-solution
+      description: Apply the reference solution
+      type: file
+      source: solution/apply.sh
+    - name: wait-for-settled
+      description: Wait until the new pod exports telemetry
+      type: file
+      source: testing/wait-for-settled.sh
+
+validation:
+  scripts:
+    - name: sdk-enabled
+      description: The SDK is not disabled and the running pod gets a real tracer
+      type: file
+      source: validation/validate-sdk-enabled.sh
+      hint: Look at the environment of the shuttle Deployment for the variable that disables the SDK. Remove it or set it to false, then wait for the new pod.
+    - name: service-name
+      description: The Collector receives data with the service name shuttle
+      type: file
+      source: validation/validate-service-name.sh
+      hint: The resource is built from OTEL_SERVICE_NAME. Set it on the Deployment and wait for the rollout.
+    - name: library-unchanged
+      description: The application code and the image were not changed
+      type: file
+      source: validation/validate-library-unchanged.sh
+      hint: Fix the configuration only. Do not edit the ConfigMap shuttle-app and do not change the image.
+    - name: telemetry-arrives
+      description: Spans, metrics and logs from the scope starfleet.navigation reach the Collector
+      type: file
+      source: validation/validate-telemetry-arrives.sh
+      hint: Read the Collector log with kubectl logs. Look for the scope name, the span plot-course and the metric shuttle.jumps.
+    - name: evidence-recorded
+      description: The ConfigMap api-sdk-evidence matches what the pod and the Collector show
+      type: file
+      source: validation/validate-evidence-recorded.sh
+      hint: Take tracer-class from the pipeline line of the shuttle log, scope-name and telemetry-sdk-version from the Collector log, and service-name from the resource.
+
+teardown:
+  keepCluster: false
