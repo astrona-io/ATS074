@@ -59,7 +59,7 @@ modules:
         difficulty: intermediate
         estimated_duration: 25m
         topic: opentelemetry-data-model
-        task_kind: fix
+        task_kind: troubleshooting
         tags: [opentelemetry, resource, service-name, otel-resource-attributes, collector]
         learning_goals:
           - Set service.name through OTEL_SERVICE_NAME
@@ -101,7 +101,7 @@ modules:
         difficulty: intermediate
         estimated_duration: 25m
         topic: opentelemetry-data-model
-        task_kind: fix
+        task_kind: build
         tags: [opentelemetry, metrics, temporality, delta, exemplars, collector]
         learning_goals:
           - Configure delta temporality with the OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE variable
@@ -125,7 +125,7 @@ modules:
         difficulty: advanced
         estimated_duration: 40m
         topic: opentelemetry-data-model
-        task_kind: fix
+        task_kind: troubleshooting
         tags: [opentelemetry, data-model, resource, temporality, exemplars, logs, collector]
         learning_goals:
           - Correct the resource of a service that has no name and a per-request attribute
@@ -174,7 +174,7 @@ modules:
         difficulty: intermediate
         estimated_duration: 25m
         topic: opentelemetry
-        task_kind: fix
+        task_kind: troubleshooting
         tags: [opentelemetry, api, sdk, otel-sdk-disabled, resource, service-name, collector]
         learning_goals:
           - Find out why a service exports nothing although its instrumentation code is correct
@@ -210,7 +210,7 @@ modules:
         difficulty: intermediate
         estimated_duration: 30m
         topic: opentelemetry
-        task_kind: fix
+        task_kind: troubleshooting
         tags: [opentelemetry, sdk, span-processor, sampler, otlp, custom-processor, collector]
         learning_goals:
           - Correct the OTLP endpoint port for an HTTP exporter
@@ -234,7 +234,7 @@ modules:
         difficulty: advanced
         estimated_duration: 45m
         topic: opentelemetry
-        task_kind: fix
+        task_kind: troubleshooting
         tags: [opentelemetry, api, sdk, resource, otlp, span-processor, sampler, propagator, collector]
         learning_goals:
           - Register the SDK and name the service while keeping an existing resource attribute
@@ -279,7 +279,7 @@ modules:
         difficulty: intermediate
         estimated_duration: 25m
         topic: opentelemetry-configuration
-        task_kind: fix
+        task_kind: troubleshooting
         tags: [opentelemetry, sdk, environment-variables, resource, service-name, otel-resource-attributes]
         learning_goals:
           - Enable an SDK that OTEL_SDK_DISABLED switched off
@@ -315,7 +315,7 @@ modules:
         difficulty: intermediate
         estimated_duration: 30m
         topic: opentelemetry-configuration
-        task_kind: fix
+        task_kind: troubleshooting
         tags: [opentelemetry, otlp, exporter, sampler, traceidratio, metric-export-interval, collector]
         learning_goals:
           - Match the OTLP HTTP exporter to the Collector HTTP listener
@@ -339,7 +339,7 @@ modules:
         difficulty: advanced
         estimated_duration: 45m
         topic: opentelemetry-configuration
-        task_kind: fix
+        task_kind: troubleshooting
         tags: [opentelemetry, sdk, otlp, resource, sampler, batch-processor, secret, headers]
         learning_goals:
           - Find and fix several configuration faults in one SDK deployment
@@ -384,7 +384,7 @@ modules:
         difficulty: intermediate
         estimated_duration: 30m
         topic: tracing
-        task_kind: fix
+        task_kind: troubleshooting
         tags: [opentelemetry, tracing, resource, sampler, span-status, collector, python-sdk]
         learning_goals:
           - Set the service name and resource attributes of a tracing application with standard OTEL environment variables
@@ -421,7 +421,7 @@ modules:
         difficulty: intermediate
         estimated_duration: 30m
         topic: opentelemetry-metrics
-        task_kind: configure
+        task_kind: build
         tags: [opentelemetry, metrics, temporality, views, histogram, cardinality, otlp, collector]
         learning_goals:
           - Set the metric export interval and delta temporality with standard OTEL environment variables
@@ -461,7 +461,7 @@ modules:
         difficulty: intermediate
         estimated_duration: 25m
         topic: observability
-        task_kind: fix
+        task_kind: troubleshooting
         tags: [opentelemetry, logs, resource, severity, trace-correlation, sensitive-data, collector]
         learning_goals:
           - Set the service name and a resource attribute so log records carry a service identity
@@ -485,7 +485,7 @@ modules:
         difficulty: advanced
         estimated_duration: 40m
         topic: observability
-        task_kind: fix
+        task_kind: troubleshooting
         tags: [opentelemetry, traces, metrics, logs, sampler, resource, trace-correlation, collector]
         learning_goals:
           - Give logs, traces and metrics one shared Resource
@@ -530,7 +530,7 @@ modules:
         difficulty: intermediate
         estimated_duration: 25m
         topic: opentelemetry-sdk
-        task_kind: fix
+        task_kind: troubleshooting
         tags: [opentelemetry, sdk, sampler, batch-span-processor, shutdown, otlp]
         learning_goals:
           - Set a parent-based ratio sampler with the standard OpenTelemetry environment variables
@@ -566,7 +566,7 @@ modules:
         difficulty: intermediate
         estimated_duration: 25m
         topic: opentelemetry-sdk
-        task_kind: fix
+        task_kind: troubleshooting
         tags: [opentelemetry, sdk, metrics, views, temporality, log-processor]
         learning_goals:
           - Set the periodic metric export interval and delta temporality
@@ -590,7 +590,7 @@ modules:
         difficulty: advanced
         estimated_duration: 40m
         topic: opentelemetry-sdk
-        task_kind: fix
+        task_kind: troubleshooting
         tags: [opentelemetry, sdk, traces, metrics, logs, shutdown, otlp]
         learning_goals:
           - Find and fix the endpoint, sampler, processor, reader and shutdown faults of one service
@@ -634,7 +634,7 @@ modules:
         difficulty: intermediate
         estimated_duration: 25m
         topic: context-propagation
-        task_kind: fix
+        task_kind: troubleshooting
         tags: [opentelemetry, context, traceparent, threads, python, collector]
         learning_goals:
           - Carry the active context into a worker thread so the spans share one trace
@@ -671,7 +671,7 @@ modules:
         difficulty: intermediate
         estimated_duration: 25m
         topic: context-propagation
-        task_kind: fix
+        task_kind: troubleshooting
         tags: [opentelemetry, propagators, otel-propagators, baggage, security]
         learning_goals:
           - Fix a receiver that ignores the traceparent header with OTEL_PROPAGATORS
@@ -696,7 +696,7 @@ modules:
         difficulty: advanced
         estimated_duration: 40m
         topic: context-propagation
-        task_kind: fix
+        task_kind: troubleshooting
         tags: [opentelemetry, propagation, baggage, threads, propagators, collector, capstone]
         learning_goals:
           - Repair propagators, thread context and baggage in a two-service trace
@@ -743,7 +743,7 @@ modules:
         difficulty: intermediate
         estimated_duration: 25m
         topic: instrumentation
-        task_kind: fix
+        task_kind: troubleshooting
         tags: [opentelemetry, python, auto-instrumentation, opentelemetry-instrument, environment-variables, collector]
         learning_goals:
           - Re-enable a disabled instrumentation of the Python agent through the environment
@@ -779,8 +779,8 @@ modules:
         difficulty: intermediate
         estimated_duration: 30m
         topic: collector
-        task_kind: configure
-        tags: [opentelemetry, collector, agent, gateway, daemonset, memory_limiter, resourcedetection, batch]
+        task_kind: build
+        tags: [opentelemetry, collector, agent, gateway, daemonset, memory-limiter, resourcedetection, batch]
         learning_goals:
           - Send application telemetry to a Collector agent instead of the gateway
           - Configure and order memory_limiter, resourcedetection and batch in the agent
@@ -805,7 +805,7 @@ modules:
         difficulty: advanced
         estimated_duration: 40m
         topic: agents
-        task_kind: configure
+        task_kind: troubleshooting
         tags: [opentelemetry, auto-instrumentation, collector, agent, gateway, least-privilege]
         learning_goals:
           - Configure a zero-code Python application and a Collector agent that forwards to a gateway
